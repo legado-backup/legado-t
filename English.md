@@ -14,6 +14,21 @@ Legado / 开源阅读
 Legado is a free and open source novel reader for Android.
 </div>
 
+> This repository is **LegadoT**, an enhanced Legado fork with JS sources, scheduled tasks and a built-in MCP service.
+>
+> [Beta downloads](https://github.com/skybbk1001/legadoT/releases/tag/beta) · [Release notes (Chinese)](<CHANGELOG.md>) · [API / MCP guide (Chinese)](<api.md>)
+>
+> **Back up before upgrading.** This beta migrates database version 93 to 94 on first launch. Older app versions cannot directly read the migrated database; keep a pre-upgrade backup if you need to roll back.
+
+### LegadoT beta highlights
+
+- Optional source-based legacy discovery page; the newer card-based discovery page remains the default.
+- Five MCP tools for discovery-card listing, creation, batch creation, updating and deletion. Invalid batch input rejects the whole batch; these are MCP tools, not new standalone REST endpoints.
+- Audio playback speed presets from 0.5× to 3×, with the existing ±0.1× adjustment retained.
+- Reading history with author and cover snapshots, distinct identities for same-title books, and idempotent backup merging.
+- Login-script page navigation and four-argument RSS navigation fixes, plus cover clipping and large-font history layout fixes.
+- Nostr paragraph comments with remote/local signers, hot/latest sorting, persistent drafts and retry support.
+
 [![](https://img.shields.io/badge/-Contents:-696969.svg)](#contents) [![](https://img.shields.io/badge/-Function-F5F5F5.svg)](#Function-) [![](https://img.shields.io/badge/-Download-F5F5F5.svg)](#Download-) [![](https://img.shields.io/badge/-Community-F5F5F5.svg)](#Community-) [![](https://img.shields.io/badge/-API-F5F5F5.svg)](#API-) [![](https://img.shields.io/badge/-Other-F5F5F5.svg)](#Other-) [![](https://img.shields.io/badge/-Grateful-F5F5F5.svg)](#Grateful-) [![](https://img.shields.io/badge/-Interface-F5F5F5.svg)](#Interface-)
 
 >New user?
@@ -55,10 +70,11 @@ You can customize the book source, set your own rules, and capture web page data
 
 #### Android
 
-* [Releases](https://github.com/gedoor/legado/releases/latest)
+* [LegadoT releases](https://github.com/skybbk1001/legadoT/releases)
+* [Latest beta](https://github.com/skybbk1001/legadoT/releases/tag/beta)
 * [Google play - $1.99](https://play.google.com/store/apps/details?id=io.legado.play.release)
 * [Coolapk](https://www.coolapk.com/apk/io.legado.app.release)
-* [\#Beta](https://kunfei.lanzoui.com/b0f810h4b)
+* [Legacy upstream beta link](https://kunfei.lanzoui.com/b0f810h4b)
 * [IzzyOnDroid F-Droid Repository](https://apt.izzysoft.de/fdroid/index/apk/io.legado.app.release)
 
 

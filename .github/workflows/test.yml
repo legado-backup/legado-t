@@ -191,7 +191,15 @@ jobs:
           prev="$(git rev-parse 'beta^{commit}' 2>/dev/null || echo '')"
           head="$(git rev-parse HEAD)"
           {
-            echo "## 更新日志"
+            # 发布页与应用内日志同步维护；CHANGELOG 中链接使用绝对地址，兼容 Release 正文。
+            if [ -s "$GITHUB_WORKSPACE/CHANGELOG.md" ]; then
+              cat "$GITHUB_WORKSPACE/CHANGELOG.md"
+            else
+              echo "## 更新日志"
+            fi
+            echo
+            echo '<details>'
+            echo '<summary>完整提交记录</summary>'
             echo
             if [ -n "$prev" ] && [ "$prev" != "$head" ] && git merge-base --is-ancestor "$prev" "$head"; then
               echo "自上一测试版以来的全部更新:"
@@ -202,8 +210,10 @@ jobs:
               git log --pretty=format:"- %s" -n 20 HEAD
             fi
             echo
-          } > $GITHUB_WORKSPACE/release.md
-          cat $GITHUB_WORKSPACE/release.md
+            echo
+            echo '</details>'
+          } > "$GITHUB_WORKSPACE/release.md"
+          cat "$GITHUB_WORKSPACE/release.md"
       - uses: actions/download-artifact@v4
         with:
           path: apk/
