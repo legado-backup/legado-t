@@ -257,6 +257,9 @@ jobs:
             --tests 'io.legado.app.ui.theme.HighlightTitleOptionTest' \
             --tests 'io.legado.app.ui.widget.image.CoverImageViewTest' \
             --tests 'io.legado.app.web.mcp.McpExploreInputsTest' \
+            --tests 'io.legado.app.JsTest.analyzeRuleJavaDelegateRetainsStringOverloads' \
+            --tests 'io.legado.app.JsTest.httpTtsJavaDelegateEncodesBaiduFormBody' \
+            --tests 'io.legado.app.JsTest.analyzeUrlReturnsDataUriAsTextWithoutHttpRequest' \
             --no-daemon --max-workers=1 \
             -Pkotlin.compiler.execution.strategy=in-process \
             --warning-mode all

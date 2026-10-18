@@ -59,6 +59,9 @@
 
 # 保持js引擎调用的java类
 -keep class * extends io.legado.app.help.JsExtensions{*;}
+# AnalyzeRule Android bridge classes are called by Rhino reflection, not static references.
+-keep class io.legado.app.model.analyzeRule.AnalyzeRuleAndroidDelegate { *; }
+-keep class io.legado.app.model.analyzeRule.AnalyzeUrlAndroidDelegate { *; }
 # JsExtensions/JsEncodeUtils 迁入 shared commonMain 后无法使用 androidx @Keep, 按 FQN 等价保留
 -keep class io.legado.app.help.JsExtensions { *; }
 -keep class io.legado.app.help.JsExtensions$* { *; }

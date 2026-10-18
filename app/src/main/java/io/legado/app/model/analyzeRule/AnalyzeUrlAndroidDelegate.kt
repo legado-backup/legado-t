@@ -29,18 +29,21 @@ class AnalyzeUrlAndroidDelegate(
 
     fun initUrl() = analyzeUrl.initUrl()
 
+    @JvmOverloads
     fun evalJS(jsStr: String, result: Any? = null): Any? = analyzeUrl.evalJS(jsStr, result)
 
     fun put(key: String, value: String): String = analyzeUrl.put(key, value)
 
     fun get(key: String): String = analyzeUrl.get(key)
 
+    @JvmOverloads
     suspend fun getStrResponseAwait(
         jsStr: String? = null,
         sourceRegex: String? = null,
         useWebView: Boolean = true
     ): StrResponse = analyzeUrl.getStrResponseAwait(jsStr, sourceRegex, useWebView)
 
+    @JvmOverloads
     fun getStrResponse(
         jsStr: String? = null,
         sourceRegex: String? = null,
