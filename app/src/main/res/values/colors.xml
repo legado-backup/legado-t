@@ -21,6 +21,7 @@
 
     <color name="background">#FAFAFA</color>
     <color name="background_card">#FFFFFF</color>
+    <color name="background_popup_menu">#F4F4F4</color>
     <color name="background_menu">#F2F2F2</color>
 
     <color name="review_sort_track">#E8E8E8</color>

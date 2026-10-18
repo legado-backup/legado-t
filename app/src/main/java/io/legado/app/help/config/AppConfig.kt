@@ -48,7 +48,7 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
             && appCtx.getPrefBoolean(PreferKey.optimizeRender, false)
     var recordLog = appCtx.getPrefBoolean(PreferKey.recordLog)
     var recordHttpLog = appCtx.getPrefBoolean(PreferKey.recordHttpLog)
-    var nostrReviewEnabled = appCtx.getPrefBoolean(PreferKey.nostrReview, true)
+    var nostrReviewEnabled = appCtx.getPrefBoolean(PreferKey.nostrReview, false)
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         when (key) {
@@ -103,7 +103,7 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
             PreferKey.recordLog -> recordLog = appCtx.getPrefBoolean(PreferKey.recordLog)
             PreferKey.recordHttpLog -> recordHttpLog = appCtx.getPrefBoolean(PreferKey.recordHttpLog)
             PreferKey.nostrReview -> nostrReviewEnabled =
-                appCtx.getPrefBoolean(PreferKey.nostrReview, true)
+                appCtx.getPrefBoolean(PreferKey.nostrReview, false)
 
         }
     }

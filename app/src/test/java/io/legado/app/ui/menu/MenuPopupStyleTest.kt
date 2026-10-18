@@ -12,7 +12,7 @@ class MenuPopupStyleTest {
         val popupBackgroundXml = readProjectFile("src/main/res/drawable/bg_popup_menu.xml")
         val stylesXml = readProjectFile("src/main/res/values/styles.xml")
 
-        assertContains(popupBackgroundXml, "<solid android:color=\"@color/background_card\"")
+        assertContains(popupBackgroundXml, "<solid android:color=\"@color/background_popup_menu\"")
         assertContains(popupBackgroundXml, "<corners android:radius=\"@dimen/radius_m\"")
         // M3 菜单靠阴影分层,不用描边(系统 overflow 走 popupElevation,自定义弹窗走 applyMd3PopupStyle 的 elevation)
         assertFalse(

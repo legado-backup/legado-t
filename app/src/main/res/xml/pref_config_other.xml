@@ -59,7 +59,7 @@
         app:allowDividerBelow="false">
 
         <io.legado.app.lib.prefs.SwitchPreference
-            android:defaultValue="true"
+            android:defaultValue="false"
             android:key="nostrReview"
             android:summary="@string/nostr_review_summary"
             android:title="@string/nostr_review" />

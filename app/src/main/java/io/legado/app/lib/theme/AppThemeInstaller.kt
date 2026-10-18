@@ -120,6 +120,7 @@ object AppThemeInstaller {
         R.color.accent to scheme.primary,
         R.color.background to scheme.background,
         R.color.background_card to scheme.surfaceContainerLow,
+        R.color.background_popup_menu to scheme.surfaceContainerLow,
         R.color.error to scheme.error,
     )
 

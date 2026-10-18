@@ -26,7 +26,7 @@ class ThemeWiringContractTest {
         "m3_surface_container_lowest", "m3_surface_container_low", "m3_surface_container",
         "m3_surface_container_high", "m3_surface_container_highest",
         "m3_surface_bright", "m3_surface_dim",
-        "accent", "background", "background_card", "error",
+        "accent", "background", "background_card", "background_popup_menu", "error",
     )
 
     /** 不参与运行时覆盖、按日夜模式静态提供的历史 token */
