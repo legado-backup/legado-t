@@ -27,6 +27,7 @@ class AnalyzeRuleAndroidDelegate(
 
     fun refreshTocUrl() = analyzeRule.refreshTocUrl()
 
+    @JvmOverloads
     fun setContent(content: Any?, baseUrl: String? = null): AnalyzeRule =
         analyzeRule.setContent(content, baseUrl)
 
@@ -40,23 +41,28 @@ class AnalyzeRuleAndroidDelegate(
 
     fun get(key: String): String = analyzeRule.get(key)
 
+    @JvmOverloads
     fun evalJS(jsStr: String, result: Any? = null): Any? = analyzeRule.evalJS(jsStr, result)
 
+    @JvmOverloads
     fun getStringList(rule: String?, mContent: Any? = null, isUrl: Boolean = false): List<String>? =
         analyzeRule.getStringList(rule, mContent, isUrl)
 
+    @JvmOverloads
     fun getStringList(
         ruleList: List<AnalyzeRule.SourceRule>,
         mContent: Any? = null,
         isUrl: Boolean = false
     ): List<String>? = analyzeRule.getStringList(ruleList, mContent, isUrl)
 
+    @JvmOverloads
     fun getString(ruleStr: String?, mContent: Any? = null, isUrl: Boolean = false): String =
         analyzeRule.getString(ruleStr, mContent, isUrl)
 
     fun getString(ruleStr: String?, unescape: Boolean): String =
         analyzeRule.getString(ruleStr, unescape)
 
+    @JvmOverloads
     fun getString(
         ruleList: List<AnalyzeRule.SourceRule>,
         mContent: Any? = null,
@@ -68,6 +74,7 @@ class AnalyzeRuleAndroidDelegate(
 
     fun getElements(ruleStr: String): List<Any> = analyzeRule.getElements(ruleStr)
 
+    @JvmOverloads
     fun splitSourceRule(ruleStr: String?, allInOne: Boolean = false): List<AnalyzeRule.SourceRule> =
         analyzeRule.splitSourceRule(ruleStr, allInOne)
 

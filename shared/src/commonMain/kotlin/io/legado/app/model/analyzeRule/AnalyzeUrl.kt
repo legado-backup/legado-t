@@ -448,6 +448,14 @@ class AnalyzeUrl(
         if (type != null) {
             return StrResponse(url, EncoderUtils.hexEncode(getByteArrayAwait()))
         }
+        if (urlNoQuery.startsWith("data:", ignoreCase = true)) {
+            val bytes = getByteArrayIfDataUri() ?: return StrResponse(url, "")
+            val charsetName = Regex("(?i)(?:^|;)charset=([^;,]+)").find(urlNoQuery)
+                ?.groupValues?.get(1)?.trim('"', '\'')
+            val charset = charsetName?.let { runCatching { charset(it) }.getOrNull() }
+                ?: Charsets.UTF_8
+            return StrResponse(url, String(bytes, charset))
+        }
         concurrentRateLimiter.withLimit {
             setCookie()
             val strResponse: StrResponse
@@ -607,15 +615,21 @@ class AnalyzeUrl(
     }
 
     private fun getByteArrayIfDataUri(): ByteArray? {
-        if (!urlNoQuery.startsWith("data:")) {
+        if (!urlNoQuery.startsWith("data:", ignoreCase = true)) {
             return null
         }
-        val dataUriFindResult = dataUriRegex.find(urlNoQuery)
-        if (dataUriFindResult != null) {
-            val dataUriBase64 = dataUriFindResult.groupValues[1]
-            return EncoderUtils.base64DecodeToByteArray(dataUriBase64)
+        val dataUriFindResult = dataUriRegex.find(urlNoQuery) ?: return null
+        val metadata = dataUriFindResult.groupValues[1]
+        val data = dataUriFindResult.groupValues[2]
+        val charset = Regex("(?i)(?:^|;)charset=([^;,]+)").find(metadata)
+            ?.groupValues?.get(1)?.trim('"', '\'')
+            ?.let { runCatching { charset(it) }.getOrNull() }
+            ?: Charsets.UTF_8
+        return if (metadata.split(';').any { it.equals("base64", ignoreCase = true) }) {
+            EncoderUtils.base64DecodeToByteArray(data)
+        } else {
+            EncoderUtils.percentDecode(data, charset).toByteArray(charset)
         }
-        return null
     }
 
     /**

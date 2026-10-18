@@ -4,6 +4,7 @@ import com.script.ScriptBindings
 import com.script.ScriptException
 import com.script.rhino.RhinoScriptEngine
 import io.legado.app.data.entities.BookChapter
+import okhttp3.ResponseBody.Companion.toResponseBody
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -30,6 +31,76 @@ class JsTest {
             print(str, true);
         }
     """.trimIndent()
+
+    @Test
+    fun analyzeRuleJavaDelegateRetainsStringOverloads() {
+        val previousFactory = io.legado.app.model.analyzeRule.AnalyzeRule.javaDelegateFactory
+        try {
+            io.legado.app.model.analyzeRule.AnalyzeRule.javaDelegateFactory = {
+                io.legado.app.model.analyzeRule.AnalyzeRuleAndroidDelegate(it)
+            }
+            val rule = io.legado.app.model.analyzeRule.AnalyzeRule()
+            val result = rule.evalJS(
+                "java.setContent('<span class=\\\"title\\\">Works</span>'); java.getString('span.title@text')"
+            )
+            Assert.assertEquals("Works", result)
+        } finally {
+            io.legado.app.model.analyzeRule.AnalyzeRule.javaDelegateFactory = previousFactory
+        }
+    }
+
+    @Test
+    fun httpTtsJavaDelegateEncodesBaiduFormBody() = runBlocking {
+        val previousFactory = io.legado.app.model.analyzeRule.AnalyzeUrl.javaDelegateFactory
+        val previousClientFactory = io.legado.app.help.http.HttpBridge.proxyClient
+        var requestBody = ""
+        try {
+            io.legado.app.model.analyzeRule.AnalyzeUrl.javaDelegateFactory = {
+                io.legado.app.model.analyzeRule.AnalyzeUrlAndroidDelegate(it)
+            }
+            io.legado.app.help.http.HttpBridge.proxyClient = {
+                okhttp3.OkHttpClient.Builder()
+                    .addInterceptor { chain ->
+                        val buffer = okio.Buffer()
+                        chain.request().body?.writeTo(buffer)
+                        requestBody = buffer.readUtf8()
+                        okhttp3.Response.Builder()
+                            .request(chain.request())
+                            .protocol(okhttp3.Protocol.HTTP_1_1)
+                            .code(200)
+                            .message("OK")
+                            .body(byteArrayOf(1, 2, 3).toResponseBody())
+                            .build()
+                    }
+                    .build()
+            }
+            val url = """http://tts.baidu.com/text2audio,{"method":"POST","body":"tex={{java.encodeURI(java.encodeURI(speakText))}}&spd={{(speakSpeed + 5) / 10 + 4}}&per=3&cuid=baidu_speech_demo&idx=1&cod=2&lan=zh&ctp=1&pdt=505&vol=5&aue=6&pit=5&res_tag=audio"} """
+            io.legado.app.model.analyzeRule.AnalyzeUrl(
+                url,
+                speakText = "中文 text",
+                speakSpeed = 5
+            ).getResponseAwait()
+            Assert.assertTrue(requestBody, requestBody.contains("tex=%25E4%25B8%25AD%25E6%2596%2587%2Btext"))
+            Assert.assertTrue(requestBody, requestBody.contains("spd=5"))
+            Assert.assertTrue(requestBody, requestBody.contains("per=3"))
+        } finally {
+            io.legado.app.model.analyzeRule.AnalyzeUrl.javaDelegateFactory = previousFactory
+            io.legado.app.help.http.HttpBridge.proxyClient = previousClientFactory
+        }
+    }
+
+    @Test
+    fun analyzeUrlReturnsDataUriAsTextWithoutHttpRequest() = runBlocking {
+        val response = io.legado.app.model.analyzeRule.AnalyzeUrl(
+            "data:text/plain;base64,SGVsbG8="
+        ).getStrResponseAwait(useWebView = false)
+
+        Assert.assertEquals("Hello", response.body)
+        val percentEncodedResponse = io.legado.app.model.analyzeRule.AnalyzeUrl(
+            "data:text/plain;charset=UTF-8,Hello%20world"
+        ).getStrResponseAwait(useWebView = false)
+        Assert.assertEquals("Hello world", percentEncodedResponse.body)
+    }
 
     @Test
     fun testMap() {
