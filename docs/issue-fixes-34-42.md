@@ -66,18 +66,31 @@ python .github/scripts/check_read_records.py
 Android 构建（Windows PowerShell，为避免资源竞争串行运行）：
 
 ```powershell
+# JAVA_HOME 请指向本机 JDK 17；不要与模拟器并行执行。
 $env:KSP_INCREMENTAL='false'
-.\gradlew.bat :app:assembleAppDebug :app:assembleAppDebugAndroidTest --no-daemon --max-workers=1
+.\gradlew.bat :app:assembleAppDebug :app:assembleAppDebugAndroidTest --no-daemon --max-workers=1 '-Pkotlin.compiler.execution.strategy=in-process'
 ```
 
 设备回归类：`MigrationTest`、`ReadRecordLayoutTest`、`CoverImageViewDrawingTest`、`LightThemeTextColorTest`、`RssCallbackLoadingTest`。后者用实际阅读 ViewModel 验证未缓存文章和目标源请求头，但不发送真实网络请求。迁移和像素/布局检查与真实网络源的完整交互验证不是同一回事；未执行的设备测试不能算作通过。
 
+安装匹配的 Debug 和 AndroidTest APK 后，可运行：
+
+```powershell
+adb -s emulator-5580 shell am instrument -w -r -e class 'io.legado.app.MigrationTest,io.legado.app.ReadRecordLayoutTest,io.legado.app.CoverImageViewDrawingTest,io.legado.app.LightThemeTextColorTest,io.legado.app.RssCallbackLoadingTest,io.legado.app.UpdateTest' io.legado.app.releaseT.debug.test/androidx.test.runner.AndroidJUnitRunner
+```
+
+注意：`adb shell am instrument` 进程退出 0 不代表 JUnit 通过，应检查输出中的 `OK (14 tests)` 或 `FAILURES!!!`。
+
 ## 本机验证记录（2026-10-18）
 
-- 聚焦 JVM：18 个测试类、85 项通过，0 失败/跳过（含 MCP、Session、备份合并/恢复、Rhino 登录/路由、封面/主题契约和旧版发现接线）。
+- 聚焦 JVM：18 个测试类、85 项通过，0 失败/跳过（含 MCP、Session、备份合并/恢复、Rhino 登录/路由、封面/主题契约和旧版发现接线）。Barrier 修复后使用 JDK 17 再跑，仍为 85/85 通过，App/AndroidTest APK 同时构建成功（5 分 21 秒）。
 - SQLite：生产迁移 SQL + DAO 查询校验通过；5 条历史记录、总耗时 250 保持不变，并与 Room 94 schema 完整列定义/主键/默认值/索引比较。
 - 全量 JVM 曾运行到 691 项，22 项失败。已修复其中两个因数据库升级导致的版本号锁死断言；其余涉及 Windows 无 secp256k1 Android 原生库/未模拟 org.json，以及既有菜单/动效静态哨兵与现代码不一致，不能据此声称全量通过。相关生产文件和静态哨兵未在本次变更中修改。
 - 部分构建尝试遇到本机原生内存不足及 Kotlin daemon 退出；与源码编译错误区分记录。模拟器与编译按顺序运行，避免同时争用内存。
+- JDK 24 下 APK 签名停滞：线程转储确认签名线程持有 `StableArchive` 锁、等待 `ForkJoinTask`，公共线程池中的写归档任务又全部等待该锁。终止该次打包后使用已安装的 JDK 17、单 worker 和 Kotlin in-process 重跑，避免把死锁误判为代码编译失败。
+- JDK 17：`:app:assembleAppDebug :app:assembleAppDebugAndroidTest` 成功（4 分 27 秒），含三种 ABI Debug APK 和 AndroidTest APK；有既有 deprecated API/未接入 commonTest 警告，无编译错误。
+- API 34 首轮设备回归：14 项中 13 项通过，阅读记录大字体布局测试失败。该测试单独再次运行仍在同一断言失败（约 1 秒），确认不是网络或启动时序问题。原因是下一行只约束到标签底边，没有包含可能更高的时间值；增加 `bottom` Barrier，引用标签和值的最大底边。
+- API 34 最终模拟器复测：`OK (14 tests)`，耗时 20.667 秒，0 失败。包含全迁移、93→94 数据保留、DAO 同名隔离/幂等合并、并发 MCP 追加/回滚、中英文大字体布局、4 项封面像素/布局、浅色输入框/弹窗、2 项 RSS 加载链路/缓存及 2 项离线更新清单转换。仅使用只读临时 AVD，结束后已关闭；不等同于原始网络源或 Android 16 厂商实机验收。
 
 ## 仍需外部资料/设备确认
 

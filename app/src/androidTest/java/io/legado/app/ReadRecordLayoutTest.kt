@@ -40,7 +40,10 @@ class ReadRecordLayoutTest {
                 binding.root.layout(0, 0, width, binding.root.measuredHeight)
                 assertEquals(binding.tvReadingTimeTag.top, binding.tvReadingTime.top)
                 assertEquals(binding.tvLastReadTimeTag.top, binding.tvLastReadTime.top)
-                assertTrue(binding.tvLastReadTime.top >= binding.tvReadingTime.bottom)
+                assertTrue(
+                    "$language: last row top=${binding.tvLastReadTime.top}, reading tag bottom=${binding.tvReadingTimeTag.bottom}, value bottom=${binding.tvReadingTime.bottom}",
+                    binding.tvLastReadTime.top >= maxOf(binding.tvReadingTimeTag.bottom, binding.tvReadingTime.bottom),
+                )
                 assertTrue(binding.tvReadingTimeTag.left >= binding.ivCover.right)
                 assertTrue(binding.tvLastReadTimeTag.left >= binding.ivCover.right)
                 assertTrue(binding.root.height >= binding.tvLastReadTime.bottom)
