@@ -16,6 +16,10 @@ Legado is a free and open source novel reader for Android.
 </div>
 
 > 本仓库为 **阅读T**（Legado 增强分支）：在 Legado 基础上扩展定时任务、JS 书源、内置 MCP 服务等能力，详见下方 [阅读T增强特性](#阅读t增强特性)。
+>
+> [测试版下载](https://github.com/skybbk1001/legadoT/releases/tag/beta) · [本版更新说明](<CHANGELOG.md>) · [完整更新历史](<app/src/main/assets/updateLog.md>) · [API / MCP 使用说明](<api.md>)
+>
+> **升级前请先备份。** 本轮测试版数据库由 93 升级到 94，首次启动自动迁移；迁移后的应用数据不支持直接交给旧版读取，如需回退，请使用升级前备份。
 
 [![](https://img.shields.io/badge/-Contents:-696969.svg)](#contents) [![](https://img.shields.io/badge/-Function-F5F5F5.svg)](#Function-主要功能-) [![](https://img.shields.io/badge/-Community-F5F5F5.svg)](#Community-交流社区-) [![](https://img.shields.io/badge/-API-F5F5F5.svg)](#API-) [![](https://img.shields.io/badge/-Other-F5F5F5.svg)](#Other-其他-) [![](https://img.shields.io/badge/-Grateful-F5F5F5.svg)](#Grateful-感谢-) [![](https://img.shields.io/badge/-Interface-F5F5F5.svg)](#Interface-界面-)
 
@@ -47,7 +51,7 @@ Legado is a free and open source novel reader for Android.
 - JS 书源：单个脚本提供 search/getChapters/getContent 等函数，支持发现、登录和段评，配套 CodeMirror 编辑器及 `.js` 导出分享
 - 登录 UI v2：支持状态循环、倒计时、下拉选择、清除登录信息等动态多步表单，以及 toggle 登录开关
 - 书源网页会话桥接：与书源关联的网页会话可访问全局缓存、书源数据和登录凭据；仅应由可信书源打开
-- 内置 MCP 服务：提供 Bearer Token 鉴权和 23 个工具，AI 助手可直连 App 开发、调试和管理书源
+- 内置 MCP 服务：提供 Bearer Token 鉴权和 29 个工具，AI 助手可直连 App 管理书源、定时任务、朗读引擎与发现卡片，支持跨书源批量添加发现卡片；[使用说明](<api.md>)
 - JS 引擎：Rhino 更换为 htmlunit-core-js（现 5.3.0），支持 let/const、箭头函数、模板字符串、解构、剩余参数等 ES6+ 语法
 - 内置 `CryptoJS` 供书源脚本使用；项目自身的书源加密兼容层改用 Android/JDK 原生加密 API
 - 书源回调事件系统(callBackJs)：书源可监听17种用户操作事件并执行自定义JS
@@ -66,6 +70,7 @@ Legado is a free and open source novel reader for Android.
 - 自定义配色：日夜双联预览，四色日夜分别调整
 - 沉浸式操作栏开关，开启后顶栏和底栏透明并沉浸
 - 发现页容器化：容器卡片流+缓存优先加载，支持换一批、多分组筛选、管理页批量操作
+- 可选旧版发现页：在“设置 → 其它设置 → 使用旧版发现页”开启，按书源展开分类，默认保留新版卡片页
 
 阅读体验
 
@@ -76,10 +81,13 @@ Legado is a free and open source novel reader for Android.
 - 目录分卷支持展开/折叠，更好的层级展示
 - 原生段评支持，支持自定义段评图标
 - 选择文本菜单支持自定义展示
+- 阅读记录显示作者与封面快照，按书籍 URL 区分同名书；兼容旧记录迁移与备份幂等合并
+- Nostr 段评：支持 NIP-46 远程 / NIP-55 本机签名器、点赞与嵌套回复、最热/最新排序，以及发送进度、草稿保存与重发
 
 听书增强
 
 - 媒体会话支持上下集切换，按书记忆倍速与播放模式，听书时长计入阅读记录
+- 音频页“播放速度”菜单提供 0.5 / 0.75 / 1 / 1.25 / 1.5 / 2 / 3 倍预设，保留 ±0.1 倍微调
 - 翻页不打断朗读，朗读悬浮胶囊快捷回位/从此处朗读
 - 片头/片尾自动跳过，支持本书与全局配置
 - 有声书缓存增强：缓存音频到本地、自定义缓存目录、清除缓存并重新解析
@@ -145,10 +153,10 @@ https://gedoor.github.io/Disclaimer
 
 ##### 阅读3.0
 
-- [下载发布](https://github.com/skybbk1001/legado/releases)
+- [下载发布](https://github.com/skybbk1001/legadoT/releases)
 - [书源规则](https://mgz0227.github.io/The-tutorial-of-Legado/)
-- [更新日志](/app/src/main/assets/updateLog.md)
-- [帮助文档](/app/src/main/assets/web/help/md/appHelp.md)
+- [更新日志](app/src/main/assets/updateLog.md)
+- [帮助文档](app/src/main/assets/web/help/md/appHelp.md)
 - [web端书架](https://github.com/gedoor/legado_web_bookshelf)
 - [web端源编辑](https://github.com/gedoor/legado_web_source_editor)
 

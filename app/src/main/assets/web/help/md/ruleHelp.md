@@ -45,6 +45,10 @@
 
 ## 登录
 
+* 页面方法与源方法
+
+  从应用打开的 v1 / v2 登录 UI 中，动态表单、按钮动作和最终登录脚本均可使用页面绑定的 `java.open(...)`，例如跳到搜索或已导入的订阅源；源数据和凭据方法继续通过 `source` 调用。页面跳转是异步的，依赖原 Activity 仍处于可交互状态，不能作为后台任务保证执行。详见 [JS 帮助](jsHelp.md) 的“交互回调与登录 UI 的页面跳转”。
+
 * 登录UI
 
   不使用内置 WebView 登录网站时，用 `登录URL` 规则实现登录逻辑，可用 `登录检查JS` 检查登录结果  
@@ -364,7 +368,7 @@ decodeImage(result, key)
   当用户在阅读/详情页触发对应操作时，软件会执行此JS代码。  
   变量`event`为当前事件名称，`result`为事件关联内容（可能为空）；  
   变量`book`为当前书籍对象，`chapter`为当前章节对象（可能为null）。  
-  交互事件绑定 `java`（回调扩展类），通知事件不绑定。
+  交互事件绑定 `java`（页面回调扩展类）；通知事件不注入页面扩展，仍使用原有 `java=source`，不能依赖 `java.open` 导航。
 
 **交互事件**（脚本返回真值拦截默认操作；返回 `false`/`no`/`0` 或空则继续执行默认操作）：
 
@@ -416,14 +420,18 @@ if (event == "clickShareBook") {
 
 ```js
 java.open(name: String, url?: String, title?: String, origin?: String)
-// name: login=源登录页 search=书籍搜索 explore=发现结果页
-// url: explore=发现地址
+// name: login=源登录页 rss=订阅阅读/列表 search=书籍搜索 explore=发现结果页
+// url: rss=文章链接(空则按订阅源配置打开列表/单页) explore=发现地址
 // title: 页面标题; search 时为搜索词
-// origin: 指定目标源(书源url), 缺省当前源
+// origin: 指定目标源(书源url/订阅源sourceUrl), 缺省当前源
 java.open("login")                                    // 当前源登录页
 java.open("login", null, null, "书源url")             // 指定源登录页
 java.open("search", null, "关键词")                   // 按关键词搜书
 java.open("explore", exploreUrl, "分类名")            // 打开发现结果页(当前源)
+java.open("rss", "https://news.example/article/1", "文章标题", "https://rss.example/source")
+java.open("rss", null, null, "https://rss.example/source") // 普通订阅源分类列表
 ```
 
-> JS 执行有超时限制（30 秒），请避免耗时操作。
+跨书源/订阅源跳转的目标源必须已导入，第四参使用源 URL 而不是显示名称。书源脚本打开 RSS 时必须指定目标订阅源；阅读链路沿用该订阅源的请求头、Cookie 配置和正文规则。交互回调不支持 `open("sort")`，请用 `open("rss", null, null, sourceUrl)` 打开普通订阅源列表。
+
+导航切到原页面主线程执行；原页面已退出、停止或保存状态时可能不跳转，不会改用其它前台页面。通知事件不具备页面导航扩展。JS 执行有超时限制（30 秒），请避免耗时操作。

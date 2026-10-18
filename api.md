@@ -334,12 +334,85 @@ claude mcp add legado --scope user --transport http --header "Authorization: Bea
 
 `<Token>` 在设置-其它-MCP Token 查看/复制(点击即复制),可随时重新生成(立即生效,无需重启)。首次开启服务时自动生成;所有 `/mcp` 请求必须携带该 token,否则 401。
 
-工具 24 个:
+当前注册工具 29 个:
 
 - 书源:save_source / debug_source / list_sources / get_source / delete_sources / check_source
 - 日志:get_http_logs / get_http_log / set_http_log_recording / get_app_logs
 - 运行时:eval_js / get_cookies / set_cookie / clear_cookies
 - 定时任务:list_auto_tasks / get_auto_task / save_auto_task / delete_auto_tasks / run_auto_task
 - 朗读引擎:list_tts / get_tts / save_tts / delete_tts / test_tts
+- 发现容器:list_explore_containers / add_explore_container / add_explore_containers / update_explore_container / delete_explore_container
 
-与「Web 服务」相互独立;工具直调 App 内部,Web 服务关闭时全部可用。
+与「Web 服务」相互独立;工具直调 App 内部,Web 服务关闭时全部可用。本次发现容器管理复用 `/mcp` 工具调用,没有新增独立的 HTTP 或 WebSocket 端点。
+
+### 发现容器工具
+
+这 5 个工具管理发现页的容器卡片配置,不抓取发现书籍。新增、批量新增和更新均要求 `sourceUrl` 对应 App 内已有、已启用发现且有有效发现分类的书源。
+
+#### 容器配置
+
+`add_explore_container` / `update_explore_container` 的 `container` 是 **JSON 对象字符串**,不是直接嵌套的对象。配置字段如下:
+
+- `sourceUrl`:必填字符串,即书源的 `bookSourceUrl`;`sourceName` 会按当前书源名回填。
+- 分类:`kindTitle` / `kindUrl` 指定一个分类;`kindTitles` / `kindUrls` 是以逗号分隔、顺序对应的多分类字符串,不是数组。`kindUrls` 可省略,但不能只传它而不传 `kindTitles`。分类按当前书源匹配,保留的标题及 URL 快照可用于兜底;单条新增或 `containers` 中的单项未指定分类时取首个有效分类。
+- `allKinds`:可选布尔值,`true` 保存当前全部有效分类快照;`dynamic`:可选布尔值,`true` 在运行时展示书源全部有效分类。两者不能同时为 `true`,使用任一全部分类模式时不得同时指定上述四个分类字段。所选分类名或 URL 含中英文逗号/分号时,会自动改用动态全部分类,避免快照被错误拆分。
+- `customTitle`:可选字符串或 `null`,空白时显示分类名;`groupName`:可选分组字符串,默认空串。
+- `style`:可选整数,`0` 横滑（默认）/ `1` 列表;`listCount`:可选整数 `1`～`20`,默认 `3`,仅列表样式使用;`enabled`:可选布尔值,默认 `true`。
+- `id` / `sortOrder`:新增时忽略传入值,由数据库自增分配 ID,在同一追加事务内分配排序并按输入顺序连续追加到末尾,不会按传入 ID 覆盖旧卡片。更新时 `id` 必须是已有的正整数,`sortOrder` 是要保留或修改的排序值。
+
+以下示例均为 MCP `tools/call` 的 `params`,不是新 HTTP 接口的请求体。书源 URL、分类和容器 ID 请替换为 App 中的实际值。
+
+#### list_explore_containers
+
+可选参数 `search`（字符串,不区分大小写的摘要子串过滤）、`enabled`（布尔值,缺省列全部）。返回按排序排列的容器摘要,含 `id`、标题、书源、分类快照、样式、数量、启用状态、分组和 `sortOrder`。
+
+```json
+{"name":"list_explore_containers","arguments":{"search":"热门","enabled":true}}
+```
+
+#### add_explore_container
+
+必填参数 `container`（JSON 对象字符串）,新增一个卡片。新增不做跨调用幂等,重复调用会再建一张卡片。
+
+```json
+{"name":"add_explore_container","arguments":{"container":"{\"sourceUrl\":\"https://example.com\",\"kindTitle\":\"热门\",\"style\":1,\"listCount\":8,\"groupName\":\"榜单\"}"}}
+```
+
+#### add_explore_containers
+
+`containers` 与 `sourceUrls` **必须且只能提供一个**:
+
+- `containers`:**JSON 数组字符串**,每项同单条容器配置。每项单独设置标题/样式/数量/启用/分组;顶层 `allKinds` / `dynamic` 可统一整批分类模式,不能与单项模式或分类选择冲突。
+- `sourceUrls`:**原生 JSON 字符串数组（native 数组）**,不是数组字符串。默认每源创建一张当前全部分类快照卡,`dynamic:true` 改为动态全部分类;可在顶层共用 `groupName`、`customTitle`、`style`、`listCount`、`enabled`。
+- 每批必须有 `1`～`50` 个输入项,上限在去重前检查。**仅 `sourceUrls` 在本次请求内对去除首尾空白后的 URL 去重**,保留首次出现的顺序;`containers` 不去重,也不会对照已有卡片或其他调用去重。两种模式均不做跨调用幂等,重试已成功的新增会产生新卡片。
+- 批量新增为 **strict atomic（严格、原子）**:书源不存在、未启用发现、无有效分类或参数/分类配置不合法等均报错,不静默跳过。先校验全部输入,再在同一事务内分配 ID/排序并整批写入,任一项无效或写入失败均整批不写入。
+
+按配置批量新增（注意 `containers` 内的转义）:
+
+```json
+{"name":"add_explore_containers","arguments":{"containers":"[{\"sourceUrl\":\"https://example.com\",\"kindTitle\":\"热门\",\"groupName\":\"榜单\"},{\"sourceUrl\":\"https://example.org\",\"allKinds\":true}]"}}
+```
+
+按书源批量新增动态全部分类卡:
+
+```json
+{"name":"add_explore_containers","arguments":{"sourceUrls":["https://example.com","https://example.org"],"dynamic":true,"groupName":"榜单","style":1,"listCount":8,"enabled":true}}
+```
+
+#### update_explore_container
+
+必填参数 `container`（含已有正整数 `id` 的**完整配置 JSON 对象字符串**）。这是整条配置替换,不是局部 patch;漏传字段按默认值处理,不会自动保留原值。应先用 `list_explore_containers` 取回当前配置字段,修改后完整传入;摘要中的 `title` / `styleName` 无需传入。保留动态全部分类模式时需传 `dynamic:true` 并省略四个分类字段。
+
+仅在书源目标或分类指向/集合变化（`sourceUrl`、`kindTitle`、`kindUrl`、`kindTitles`、`kindUrls`）时清理该卡片的书籍缓存;只改标题、样式、数量、分组、启用或排序不会主动清缓存。
+
+```json
+{"name":"update_explore_container","arguments":{"container":"{\"id\":42,\"sourceUrl\":\"https://example.com\",\"sourceName\":\"示例书源\",\"kindTitle\":\"热门\",\"kindUrl\":\"https://example.com/hot\",\"kindTitles\":\"热门\",\"kindUrls\":\"https://example.com/hot\",\"customTitle\":\"本周热门\",\"style\":1,\"listCount\":8,\"sortOrder\":7,\"enabled\":true,\"groupName\":\"榜单\"}"}}
+```
+
+#### delete_explore_container
+
+必填参数是 `ids`（原生 JSON 整数数组）,即使只删一个也传数组,不是 `id` 或 `container`。删除存在的卡片并清理其书籍缓存;部分 ID 不存在时会在结果中提示,全部不存在时报错。
+
+```json
+{"name":"delete_explore_container","arguments":{"ids":[42,43]}}
+```

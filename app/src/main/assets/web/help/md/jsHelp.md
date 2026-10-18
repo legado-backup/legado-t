@@ -52,7 +52,9 @@ java.searchBook(bookName: String)
 java.addBook(bookUrl: String)
 ```
 
-- 页面跳转调度
+- 订阅阅读页中的跳转调度
+
+以下方法绑定于订阅阅读页的 `shouldOverrideUrlLoading` 规则。书源交互回调和登录 UI 使用的同名方法见下一节，支持的 `name` 不完全相同。
 
 ```js
 java.open(name: String, url?: String, title?: String, origin?: String)
@@ -65,6 +67,26 @@ java.open("rss", "https://example.com/a/1", "文章") // 打开文章
 java.open("search", null, "关键词")                 // 按关键词搜书
 java.open("explore", exploreUrl, "分类名", source.getKey()) // 打开发现结果页, 指定书源url
 ```
+
+### 交互回调与登录 UI 的页面跳转
+
+书源交互事件的 `callBackJs`、v1 登录 UI（动态渲染、按钮 action、最终 `login()`）及 v2 的 `loginUi` / `loginAction` 使用页面绑定的 `java` 扩展。`source` 仍代表源对象，可继续调用 `source.getLoginInfo()`、`source.putLoginHeader()` 等源方法。
+
+```js
+java.open("login"); // 当前源登录页
+java.open("search", null, "关键词");
+java.open("explore", "https://book.example/hot", "热门", "https://book.example");
+// 第四参必须是已导入订阅源的 sourceUrl，不是它的显示名称
+java.open("rss", "https://news.example/article/1", "文章标题", "https://rss.example/source");
+// url 为空：普通订阅源打开分类列表；单页源按其配置打开内容/外部地址
+java.open("rss", null, null, "https://rss.example/source");
+```
+
+- 此上下文支持 `login` / `rss` / `search` / `explore`；不支持订阅阅读页专用的 `sort`，打开订阅分类列表请使用 `rss` 加空链接。
+- 从书源跳到订阅源时必须传第四参；只有当前源本来就是订阅源时，RSS 的目标源才可省略。源必须已导入，方法不会自动下载或创建订阅源。
+- RSS 阅读沿用目标订阅源的请求头、Cookie 配置及正文规则。显式文章链接可进入未缓存文章的加载链路，已有文章不会被空记录覆盖；网站能否登录和解析正文仍取决于源规则。
+- 导航是异步操作，只在发起调用的原页面仍可交互时执行；原页面已退出、停止或保存状态时可能不跳转，不会借用其它前台页面。
+- 通知类回调不注入页面导航扩展，仍保留 `java=source`；后台通知事件不能依赖 `java.open`。
 
 ### [AnalyzeUrl](https://github.com/gedoor/legado/blob/master/app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeUrl.kt) 部分函数
 

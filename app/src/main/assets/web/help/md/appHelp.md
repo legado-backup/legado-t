@@ -72,7 +72,10 @@
 发现和正版书源只能用来找书或看排行榜，不能用来看书，如需看书请切换书源。
 
 ### 8. 为什么书源这么多，“发现”里却只有一点点？
-书源想要在发现界面里显示需要在书源里添加发现规则，并不是所有书源都有发现规则。
+书源需要有发现规则并启用发现，并不是所有书源都支持。新版发现页以容器卡片展示，可在发现页的管理入口添加书源分类卡片，也可通过 MCP 管理；旧版发现页按书源展开分类。
+
+### 9. 如何切回旧版发现页？
+默认使用新版容器卡片发现页。如需旧版，在“**设置**”——“**其它设置**”中打开“**使用旧版发现页**”；关闭后切回新版。
 
 ## 本地/WebDav远程书籍相关
 
@@ -162,6 +165,9 @@
 * 3.0 旧版可以点击书籍界面的章节标题进入“**编辑书源**”界面，在“**正文**”——“**图片样式**”中填入 *`full`*，保存更改，刷新当前章节即可。
 * 3.0 新版可以直接在书籍阅读界面点击右上角的“**⁝**”按钮，选择“**图片样式**”——***`full`***。
 
+### 15. 阅读记录为什么增加了作者和封面？同名书会混在一起吗？
+阅读记录会保存作者和封面地址快照，书籍移出书架后仍保留这些信息；封面能否加载还取决于原地址或本地文件是否可用。同名但书籍 URL 不同的记录分开统计和删除，不再只按书名合并。升级前的旧记录仅在书架中有唯一同名书时补全信息，无法唯一匹配的记录会保留为独立历史记录，不猜测作者或归到某本同名书。
+
 
 ## 替换净化相关
 
@@ -205,7 +211,10 @@
 书架、看书进度、搜索记录、书源、替换和 APP 设置等都会备份，基本涵盖所有内容。
 
 ### 5. 出现某些未知 Bug 怎么办？
-清除软件数据试试看，不行再进行反馈。
+先完成本地或云备份，再尝试清除软件数据；清除数据会移除本机未备份的书架、书源和设置。若问题仍存在，请反馈复现步骤和日志。
+
+### 6. 升级测试版前需要注意什么？
+请先在“**备份与恢复**”中完成备份，并另存一份升级前的备份。本次数据库版本从 `93` 升级到 `94`，会迁移阅读记录；这些数字是数据库版本，不是 App 版本号。旧版不能直接读取迁移后的数据库，不要把直接降级当作回退方案。需要回退时应使用升级前备份，并先确认目标版本支持恢复。
 
 
 ## 其他
@@ -220,3 +229,78 @@
 
 ### 3. 搜索的时候感觉手机卡顿，如何解决？
 “**我的**”——“**其他设置**”——调低“**更新和搜索线程数**”。
+
+### 4. 音频播放如何快速选择倍速？
+在音频播放页右上角“**⁝**”菜单中选择“**播放速度**”，可选 `0.5x`、`0.75x`、`1x`、`1.25x`、`1.5x`、`2x`、`3x` 共 7 个预设。原有每次 `±0.1` 的微调按钮仍保留。
+
+## MCP 服务
+
+### 1. 如何连接 MCP 服务？
+开启 App 的“**MCP 服务**”后，电脑上的 MCP 客户端可通过 Streamable HTTP 连接 `http://<手机IP>:1236/mcp`（默认端口 `1236`，可在其它设置修改）。每次请求需带 `Authorization: Bearer <Token>`；Token 可在“**其它设置**”——“**MCP Token**”查看/复制，重新生成后立即生效。不要向不可信的人或客户端提供 Token。
+
+例如，在电脑上注册 Claude Code 客户端：
+
+```text
+claude mcp add legado --scope user --transport http --header "Authorization: Bearer <Token>" http://<手机IP>:1236/mcp
+```
+
+MCP 与“**Web 服务**”独立，Web 服务关闭也可使用。当前共注册 29 个工具，涵盖书源、日志、运行时、定时任务、朗读引擎和发现容器；本次发现容器工具复用 `/mcp`，没有新增独立 HTTP 或 WebSocket 端点。
+
+### 2. 如何通过 MCP 管理发现容器？
+这 5 个工具管理新版发现页的卡片配置，不抓取发现书籍。新增和更新都要求书源已导入 App、启用发现且有有效发现分类。
+
+* `list_explore_containers`：可选 `search`（字符串，摘要子串过滤，不区分大小写）、`enabled`（布尔值，缺省列全部）；返回容器 ID、书源、分类、样式、数量、分组、启用状态和排序等摘要。
+* `add_explore_container`：必填 `container`，类型是 **JSON 对象字符串**，新增一张卡片。
+* `add_explore_containers`：`containers` 与 `sourceUrls` 必须二选一。`containers` 是 **JSON 数组字符串**，每项按单条配置；`sourceUrls` 是 **原生 JSON 字符串数组（native 数组）**，默认每源一张当前全部分类快照卡，顶层 `dynamic:true` 改为动态全部分类。`sourceUrls` 模式可在顶层共用 `groupName`、`customTitle`、`style`、`listCount`、`enabled`；`containers` 模式在各项中设置这些字段，顶层 `allKinds` / `dynamic` 可统一分类模式，但不能与各项的模式或分类选择冲突。
+* `update_explore_container`：必填 `container`，是含已有正整数 `id` 的**完整配置 JSON 对象字符串**，不是局部 patch。漏传字段会取默认值，不自动保留原值；请先列出当前配置，修改后完整传回（摘要的 `title` / `styleName` 无需传入）。仅书源目标或分类指向/集合变化时清理卡片的书籍缓存，只改标题、样式、数量、分组、启用或排序不主动清缓存。
+* `delete_explore_container`：必填 `ids`，是原生 JSON 整数数组，即使删除一张也用数组；删除卡片并清理其书籍缓存。部分 ID 不存在会提示，全部不存在时报错。
+
+`container` 中的常用字段：
+
+* `sourceUrl` 必填，即书源的 `bookSourceUrl`；书源名 `sourceName` 按 App 内当前书源自动回填。
+* 单分类用 `kindTitle` / `kindUrl`；多分类用 `kindTitles` / `kindUrls`（按顺序对应的逗号分隔字符串，不是数组）。`kindUrls` 可省略，但不能脱离 `kindTitles` 单独传入。未指定分类时，单条新增和 `containers` 中的单项取首个有效分类。
+* `allKinds:true` 保存当前全部有效分类快照；`dynamic:true` 在运行时展示书源全部有效分类。两者不能同时为 `true`，且不能同时指定四个分类字段。分类名或 URL 含中英文逗号/分号时会自动改为动态全部分类，避免快照被拆错。更新时若要保留动态模式，需传 `dynamic:true` 并省略四个分类字段。
+* `customTitle` 为自定义标题（空白或 `null` 使用分类名）；`groupName` 为分组，默认空串；`style` 为 `0` 横滑（默认）或 `1` 列表；`listCount` 为 `1`～`20`，默认 `3`，仅列表样式使用；`enabled` 默认 `true`。
+* 新增忽略传入的 `id` / `sortOrder`，由数据库自增 ID，在同一事务中分配排序并按输入顺序连续追加到末尾，不覆盖旧卡片；更新时需保留或明确修改 `sortOrder`。
+
+**【批量注意】** 每批必须有 `1`～`50` 个输入项，上限在去重前检查。仅 `sourceUrls` 在**本次请求内**对去除首尾空白后的 URL 去重并保留首次顺序；`containers` 不去重，也不对照已有卡片去重。新增不做跨调用幂等，重复调用已成功的请求会再建卡片。批量采用 **strict atomic（严格、原子）**：书源不存在、未启用发现、无有效分类或参数/分类配置不合法时直接报错，不静默跳过；全部校验通过后单事务写入，任一项无效或写入失败均整批不写入。
+
+### 3. 发现容器工具的调用示例
+
+以下都是 MCP `tools/call` 的 `params`，不是独立 HTTP 接口。请替换示例书源 URL、分类和容器 ID。
+
+列出启用的卡片：
+
+```json
+{"name":"list_explore_containers","arguments":{"enabled":true}}
+```
+
+新增一张指定分类卡片（`container` 为字符串）：
+
+```json
+{"name":"add_explore_container","arguments":{"container":"{\"sourceUrl\":\"https://example.com\",\"kindTitle\":\"热门\",\"style\":1,\"listCount\":8,\"groupName\":\"榜单\"}"}}
+```
+
+按配置批量新增（`containers` 为数组字符串）：
+
+```json
+{"name":"add_explore_containers","arguments":{"containers":"[{\"sourceUrl\":\"https://example.com\"},{\"sourceUrl\":\"https://example.org\",\"allKinds\":true}]"}}
+```
+
+按书源批量新增动态全部分类卡（`sourceUrls` 为原生数组）：
+
+```json
+{"name":"add_explore_containers","arguments":{"sourceUrls":["https://example.com","https://example.org"],"dynamic":true,"groupName":"榜单","style":1,"listCount":8}}
+```
+
+更新现有卡片的完整配置：
+
+```json
+{"name":"update_explore_container","arguments":{"container":"{\"id\":42,\"sourceUrl\":\"https://example.com\",\"sourceName\":\"示例书源\",\"kindTitle\":\"热门\",\"kindUrl\":\"https://example.com/hot\",\"kindTitles\":\"热门\",\"kindUrls\":\"https://example.com/hot\",\"customTitle\":\"本周热门\",\"style\":1,\"listCount\":8,\"sortOrder\":7,\"enabled\":true,\"groupName\":\"榜单\"}"}}
+```
+
+按 ID 数组删除卡片：
+
+```json
+{"name":"delete_explore_container","arguments":{"ids":[42,43]}}
+```
