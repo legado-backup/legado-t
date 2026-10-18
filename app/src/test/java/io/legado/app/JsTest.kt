@@ -3,7 +3,9 @@ package io.legado.app
 import com.script.ScriptBindings
 import com.script.ScriptException
 import com.script.rhino.RhinoScriptEngine
+import com.sun.net.httpserver.HttpServer
 import io.legado.app.data.entities.BookChapter
+import java.net.InetSocketAddress
 import okhttp3.ResponseBody.Companion.toResponseBody
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -100,6 +102,77 @@ class JsTest {
             "data:text/plain;charset=UTF-8,Hello%20world"
         ).getStrResponseAwait(useWebView = false)
         Assert.assertEquals("Hello world", percentEncodedResponse.body)
+    }
+
+    @Test
+    fun analyzeUrlSendsUrlOptionsHeadersQueryAndJsonPostBody() = runBlocking {
+        val previousClientFactory = io.legado.app.help.http.HttpBridge.proxyClient
+        var requestUrl = ""
+        var requestHeader = ""
+        var requestBody = ""
+        try {
+            io.legado.app.help.http.HttpBridge.proxyClient = {
+                okhttp3.OkHttpClient.Builder()
+                    .addInterceptor { chain ->
+                        requestUrl = chain.request().url.toString()
+                        requestHeader = chain.request().header("X-Fixture").orEmpty()
+                        val buffer = okio.Buffer()
+                        chain.request().body?.writeTo(buffer)
+                        requestBody = buffer.readUtf8()
+                        okhttp3.Response.Builder()
+                            .request(chain.request())
+                            .protocol(okhttp3.Protocol.HTTP_1_1)
+                            .code(200)
+                            .message("OK")
+                            .body("ok".toResponseBody())
+                            .build()
+                    }
+                    .build()
+            }
+            val url = "http://fixture.test/api?q=one,{\"method\":\"POST\",\"headers\":{\"X-Fixture\":\"yes\",\"Content-Type\":\"application/json\"},\"body\":{\"key\":\"value\"}}"
+            val response = io.legado.app.model.analyzeRule.AnalyzeUrl(url)
+                .getStrResponseAwait(useWebView = false)
+
+            Assert.assertEquals("ok", response.body)
+            Assert.assertEquals("http://fixture.test/api?q=one", requestUrl)
+            Assert.assertEquals("yes", requestHeader)
+            Assert.assertEquals(
+                "{\"key\":\"value\"}",
+                requestBody.replace(Regex("\\s"), "")
+            )
+        } finally {
+            io.legado.app.help.http.HttpBridge.proxyClient = previousClientFactory
+        }
+    }
+
+    @Test
+    fun analyzeUrlFollowsRedirectAndDecodesDeclaredCharset() = runBlocking {
+        val previousClientFactory = io.legado.app.help.http.HttpBridge.proxyClient
+        val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
+        server.createContext("/start") { exchange ->
+            exchange.responseHeaders.add("Location", "http://127.0.0.1:${server.address.port}/final")
+            exchange.sendResponseHeaders(302, -1)
+            exchange.close()
+        }
+        server.createContext("/final") { exchange ->
+            val bytes = "中文".toByteArray(charset("GBK"))
+            exchange.responseHeaders.add("Content-Type", "text/plain; charset=GBK")
+            exchange.sendResponseHeaders(200, bytes.size.toLong())
+            exchange.responseBody.use { it.write(bytes) }
+        }
+        server.start()
+        try {
+            io.legado.app.help.http.HttpBridge.proxyClient = { okhttp3.OkHttpClient() }
+            val response = io.legado.app.model.analyzeRule.AnalyzeUrl(
+                "http://127.0.0.1:${server.address.port}/start"
+            ).getStrResponseAwait(useWebView = false)
+
+            Assert.assertEquals("中文", response.body)
+            Assert.assertEquals("http://127.0.0.1:${server.address.port}/final", response.url)
+        } finally {
+            server.stop(0)
+            io.legado.app.help.http.HttpBridge.proxyClient = previousClientFactory
+        }
     }
 
     @Test
