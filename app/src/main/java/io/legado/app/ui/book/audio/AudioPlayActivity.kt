@@ -38,6 +38,7 @@ import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.model.AudioCache
 import io.legado.app.model.AudioPlay
+import io.legado.app.model.AudioPlaySpeed
 import io.legado.app.model.BookCover
 import io.legado.app.model.SourceCallBack
 import io.legado.app.model.analyzeRule.AnalyzeUrl
@@ -72,7 +73,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import splitties.views.onLongClick
 import java.io.File
-import java.util.Locale
 import io.legado.app.data.entities.delete
 import io.legado.app.data.entities.getAudioIntroMs
 import io.legado.app.data.entities.getAudioOutroMs
@@ -179,6 +179,7 @@ class AudioPlayActivity :
                 }
             }
 
+            R.id.menu_audio_speed -> showAudioSpeedDialog()
             R.id.menu_wake_lock -> AppConfig.audioPlayUseWakeLock = !AppConfig.audioPlayUseWakeLock
             R.id.menu_copy_audio_url -> AudioPlay.book?.let { book ->
                 val url = AudioPlayService.url
@@ -253,6 +254,8 @@ class AudioPlayActivity :
             binding.ivFastRewind.invisible()
             binding.ivFastForward.invisible()
         }
+        binding.ivFastForward.contentDescription = getString(R.string.fast_forward)
+        binding.ivFastRewind.contentDescription = getString(R.string.fast_rewind)
         binding.ivFastForward.setOnClickListener {
             AudioPlay.adjustSpeed(0.1f)
         }
@@ -469,10 +472,10 @@ class AudioPlayActivity :
             // Slider 无二级进度语义,缓冲进度不再单独绘制
         }
         observeEventSticky<Float>(EventBus.AUDIO_SPEED) {
-            if (it == 1f) {
+            if (AudioPlaySpeed.clamp(it) == 1f) {
                 binding.tvSpeed.invisible()
             } else {
-                binding.tvSpeed.text = String.format(Locale.ROOT, "%.1fX", it)
+                binding.tvSpeed.text = "${AudioPlaySpeed.format(it)}X"
                 binding.tvSpeed.visible()
             }
         }
@@ -510,6 +513,21 @@ class AudioPlayActivity :
     override fun upLoading(loading: Boolean) {
         runOnUiThread {
             binding.progressLoading.visible(loading)
+        }
+    }
+
+    private fun showAudioSpeedDialog() {
+        val currentSpeed = AudioPlaySpeed.clamp(AudioPlay.book?.getAudioPlaySpeed() ?: 1f)
+        val presets = AudioPlaySpeed.presets
+        val currentPresetIndex = AudioPlaySpeed.presetIndex(currentSpeed)
+        alert(titleResource = R.string.audio_play_speed) {
+            singleChoiceItems(
+                presets.map { "${AudioPlaySpeed.format(it)}x" }.toTypedArray(),
+                currentPresetIndex
+            ) { dialog, index ->
+                presets.getOrNull(index)?.let(AudioPlay::setSpeed)
+                dialog.dismiss()
+            }
         }
     }
 

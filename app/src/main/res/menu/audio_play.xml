@@ -23,6 +23,11 @@
         app:showAsAction="never" />
 
     <item
+        android:id="@+id/menu_audio_speed"
+        android:title="@string/audio_play_speed"
+        app:showAsAction="never" />
+
+    <item
         android:id="@+id/menu_copy_audio_url"
         android:title="@string/copy_play_url"
         app:showAsAction="never" />

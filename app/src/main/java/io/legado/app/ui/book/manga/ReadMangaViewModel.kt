@@ -92,6 +92,7 @@ class ReadMangaViewModel(application: Application) : BaseViewModel(application) 
             return
         }
 
+        ReadManga.refreshReadRecord()
         //开始加载内容
         if (!isSameBook) {
             ReadManga.loadContent()

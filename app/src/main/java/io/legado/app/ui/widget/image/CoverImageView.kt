@@ -103,7 +103,7 @@ class CoverImageView @JvmOverloads constructor(
         viewWidth = width.toFloat()
         viewHeight = height.toFloat()
         filletPath.reset()
-        // cornerRadius=0:不自绘圆角(交外层卡片裁),filletPath 留空,onDraw 跳过 clipPath
+        // cornerRadius=0:不自绘圆角(交外层卡片裁),filletPath 留空,draw 直接走父类。
         if (cornerRadius > 0f && width > 10 && viewHeight > 10) {
             val r = cornerRadius.coerceAtMost(viewWidth / 2).coerceAtMost(viewHeight / 2)
             filletPath.apply {
@@ -121,10 +121,24 @@ class CoverImageView @JvmOverloads constructor(
         }
     }
 
-    override fun onDraw(canvas: Canvas) {
-        if (!filletPath.isEmpty) {
-            canvas.clipPath(filletPath)
+    override fun draw(canvas: Canvas) {
+        if (filletPath.isEmpty) {
+            super.draw(canvas)
+            return
         }
+        // View.draw 先画 background,之后才调 onDraw。只在 onDraw 裁图片会漏掉背景,
+        // 圆角外就会留下矩形底色(浅色/透明封面尤其明显)。整次 draw 共用同一裁剪,
+        // 且恢复 Canvas,不能把裁剪泄漏给后续绘制的兄弟视图/角标。
+        val saveCount = canvas.save()
+        try {
+            canvas.clipPath(filletPath)
+            super.draw(canvas)
+        } finally {
+            canvas.restoreToCount(saveCount)
+        }
+    }
+
+    override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         if (defaultCover && !isInEditMode) {
             drawNameAuthor(canvas)

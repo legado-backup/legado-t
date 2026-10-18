@@ -86,6 +86,15 @@ interface BaseSource : JsExtensionsAndroid, SourceContract {
     }
 
     fun loginUi(book: Book? = null, chapter: BookChapter? = null): List<RowUi>? {
+        return loginUiWithJava(book, chapter, null)
+    }
+
+    /** 登录页面执行动态 loginUi 时使用的 java facade;保留 [loginUi] 旧入口。 */
+    fun loginUiWithJava(
+        book: Book? = null,
+        chapter: BookChapter? = null,
+        java: JsExtensionsAndroid? = null,
+    ): List<RowUi>? {
         val rawLoginUi = loginUi?.trim().orEmpty()
         if (rawLoginUi.isBlank()) return null
         val loginUiJson = try {
@@ -94,6 +103,7 @@ interface BaseSource : JsExtensionsAndroid, SourceContract {
                 val result = evalJS(jsRule) {
                     put("book", book)
                     put("chapter", chapter)
+                    java?.let { put("java", it) }
                 }
                 when {
                     result is String -> result
@@ -128,6 +138,14 @@ interface BaseSource : JsExtensionsAndroid, SourceContract {
         stateJson: String,
         book: Book? = null,
         chapter: BookChapter? = null,
+    ): String? = evalLoginUiV2WithJava(stateJson, book, chapter, null)
+
+    /** 页面专用入口，不改变旧 evalLoginUiV2 的 JVM 参数列表。 */
+    fun evalLoginUiV2WithJava(
+        stateJson: String,
+        book: Book? = null,
+        chapter: BookChapter? = null,
+        java: JsExtensionsAndroid? = null,
     ): String? {
         val loginJs = getLoginJs()
             ?: throw NoStackTraceException("登录UI v2 需要 loginUrl JS 承载 loginUi/loginAction 函数")
@@ -136,6 +154,7 @@ interface BaseSource : JsExtensionsAndroid, SourceContract {
             put("__loginState", stateJson)
             put("book", book)
             put("chapter", chapter)
+            java?.let { put("java", it) }
         }
         return JsSourceEngine.normalizeJsResult(result)
     }
@@ -147,6 +166,16 @@ interface BaseSource : JsExtensionsAndroid, SourceContract {
         formJson: String,
         book: Book? = null,
         chapter: BookChapter? = null,
+    ): String? = evalLoginActionV2WithJava(action, stateJson, formJson, book, chapter, null)
+
+    /** 页面专用入口，不改变旧 evalLoginActionV2 的 JVM 参数列表。 */
+    fun evalLoginActionV2WithJava(
+        action: String,
+        stateJson: String,
+        formJson: String,
+        book: Book? = null,
+        chapter: BookChapter? = null,
+        java: JsExtensionsAndroid? = null,
     ): String? {
         val loginJs = getLoginJs()
             ?: throw NoStackTraceException("登录UI v2 需要 loginUrl JS 承载 loginUi/loginAction 函数")
@@ -158,6 +187,7 @@ interface BaseSource : JsExtensionsAndroid, SourceContract {
             put("__loginForm", formJson)
             put("book", book)
             put("chapter", chapter)
+            java?.let { put("java", it) }
         }
         return JsSourceEngine.normalizeJsResult(result)
     }
@@ -168,10 +198,22 @@ interface BaseSource : JsExtensionsAndroid, SourceContract {
         return extractInlineJs(loginJs) ?: loginJs
     }
 
-    /**
-     * 调用login函数 实现登录请求
-     */
+    /** 无参入口必须真实存在于 JVM，Kotlin 默认参数不能供 Rhino 调用。 */
+    fun login() {
+        login(null, null)
+    }
+
+    /** 调用 login 函数；保留原有两参数 JVM 入口。 */
     fun login(book: Book? = null, chapter: BookChapter? = null) {
+        loginWithJava(book, chapter, null)
+    }
+
+    /** 登录函数执行入口，可选注入页面 facade。 */
+    fun loginWithJava(
+        book: Book? = null,
+        chapter: BookChapter? = null,
+        java: JsExtensionsAndroid? = null,
+    ) {
         val loginJs = getLoginJs()
         if (!loginJs.isNullOrBlank()) {
             @Language("js")
@@ -185,6 +227,7 @@ interface BaseSource : JsExtensionsAndroid, SourceContract {
             evalJS(js) {
                 put("book", book)
                 put("chapter", chapter)
+                java?.let { put("java", it) }
             }
         }
     }

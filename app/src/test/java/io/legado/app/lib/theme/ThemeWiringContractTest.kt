@@ -1,5 +1,6 @@
 package io.legado.app.lib.theme
 
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
@@ -80,6 +81,31 @@ class ThemeWiringContractTest {
             "isRuntimeTableInstalled 必须是只读公开(私有 set)",
             Regex("""var isRuntimeTableInstalled: Boolean = false\s+private set""").containsMatchIn(src)
         )
+    }
+
+    @Test
+    fun `light text attributes do not fall back to material white placeholder selectors`() {
+        val styles = readProjectFile("src/main/res/values/styles.xml")
+        val baseTheme = Regex("""<style name="Base\.AppTheme".*?</style>""", RegexOption.DOT_MATCHES_ALL)
+            .find(styles)?.value ?: error("未找到 Base.AppTheme 样式块")
+        mapOf(
+            "android:textColorPrimary" to "text_primary_color",
+            "android:textColorSecondary" to "text_secondary_color",
+            "android:textColorAlertDialogListItem" to "m3_on_surface",
+            "android:textColorHint" to "m3_on_surface_variant",
+        ).forEach { (attr, color) ->
+            assertTrue("$attr 必须显式指向 app 文字色通路", baseTheme.contains("<item name=\"$attr\">@color/$color</item>"))
+        }
+        listOf("text_primary_color" to "m3_on_surface", "text_secondary_color" to "m3_on_surface_variant")
+            .forEach { (selector, token) ->
+                val xml = readProjectFile("src/main/res/color/$selector.xml")
+                assertTrue(xml.contains("android:color=\"@color/$token\""))
+                assertFalse(xml.contains("@color/white"))
+                assertFalse(xml.contains("material_personalized"))
+            }
+        val installer = readProjectFile("src/main/java/io/legado/app/lib/theme/AppThemeInstaller.kt")
+        assertFalse("不能重新引入会覆盖文字 attr 的 PersonalizedColors overlay", Regex("""ColorResourcesOverride\s*\.\s*getInstance""").containsMatchIn(installer))
+        assertFalse(Regex("""DynamicColors\s*\.\s*apply""").containsMatchIn(installer))
     }
 
     private fun resolvesToPalette(name: String, visited: MutableSet<String>): Boolean {

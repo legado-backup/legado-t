@@ -231,6 +231,21 @@ val Context.popupBackground: GradientDrawable
     }
 
 /**
+ * 封面卡片的底色与封面透明像素使用同一页面背景,避免圆角边缘露出静态 background_card
+ * (API 26-29 不支持运行时资源覆盖,自定义背景下差异尤为明显)。仅供封面卡,不改变普通卡片分层。
+ */
+val Context.coverCardBackgroundColor: Int
+    get() = coverCardFillColor(
+        pageBackgroundColor = backgroundColor,
+        immersive = AppConfig.isTransparentStatusBar || AppConfig.isTransparentActionBar,
+    )
+
+@ColorInt
+internal fun coverCardFillColor(@ColorInt pageBackgroundColor: Int, immersive: Boolean): Int {
+    return if (immersive) android.graphics.Color.TRANSPARENT else pageBackgroundColor
+}
+
+/**
  * 卡片背景色：沉浸式操作栏/状态栏时完全透明，列表行直接浮在页面背景上；
  * 非沉浸式时保持纯色不变。
  */

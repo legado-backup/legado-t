@@ -128,6 +128,7 @@ class ReadBookViewModel(application: Application) : BaseViewModel(application) {
         if ((ReadBook.chapterSize == 0 || book.isLocalModified()) && !loadChapterListAwait(book)) {
             return
         }
+        ReadBook.refreshReadRecord()
         ReadBook.upMsg(null)
         if (!isSameBook) {
             ReadBook.loadContent(resetPageOffset = true)

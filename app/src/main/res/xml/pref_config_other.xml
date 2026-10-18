@@ -36,6 +36,12 @@
             android:key="showRss"
             android:title="@string/show_rss" />
 
+        <io.legado.app.lib.prefs.SwitchPreference
+            android:defaultValue="false"
+            android:key="legacyExplore"
+            android:summary="@string/legacy_explore_summary"
+            android:title="@string/legacy_explore_title" />
+
         <io.legado.app.lib.prefs.NameListPreference
             android:defaultValue="bookshelf"
             android:key="defaultHomePage"

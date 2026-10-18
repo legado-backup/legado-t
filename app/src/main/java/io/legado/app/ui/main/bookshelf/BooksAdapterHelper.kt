@@ -12,7 +12,7 @@ import io.legado.app.help.book.isLocal
 import io.legado.app.help.book.readProgress
 import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.theme.accentColor
-import io.legado.app.lib.theme.cardBackgroundColor
+import io.legado.app.lib.theme.coverCardBackgroundColor
 import io.legado.app.ui.widget.anima.RotateLoading
 import io.legado.app.ui.widget.text.BadgeView
 import io.legado.app.utils.ColorUtils
@@ -147,7 +147,7 @@ fun ItemBookshelfGridBinding.bindBook(
     payloads: MutableList<Any>,
 ) {
     ivCover.transitionName = "book_cover_" + item.name + item.author
-    coverCard.setCardBackgroundColor(root.context.cardBackgroundColor)
+    coverCard.setCardBackgroundColor(root.context.coverCardBackgroundColor)
 
     fun loadCover() = ivCover.load(
         item.getDisplayCover(), item.name, item.author, false, item.getCoverSourceOrigin()

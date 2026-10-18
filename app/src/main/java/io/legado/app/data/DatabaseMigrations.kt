@@ -22,7 +22,7 @@ object DatabaseMigrations {
             migration_31_32, migration_32_33, migration_33_34, migration_34_35,
             migration_35_36, migration_36_37, migration_37_38, migration_38_39,
             migration_39_40, migration_40_41, migration_41_42, migration_42_43,
-            migration_79_80, migration_80_81,
+            migration_79_80, migration_80_81, migration_93_94,
         )
     }
 
@@ -350,6 +350,39 @@ object DatabaseMigrations {
     private val migration_80_81 = object : Migration(80, 81) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL("CREATE TABLE IF NOT EXISTS `highlightRules` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `pattern` TEXT NOT NULL, `isRegex` INTEGER NOT NULL, `scope` TEXT, `isEnabled` INTEGER NOT NULL, `style` TEXT NOT NULL, `sortOrder` INTEGER NOT NULL, `timeoutMillisecond` INTEGER NOT NULL, `group` TEXT)")
+        }
+    }
+
+    /**
+     * 历史记录只有书名：仅在书架中存在唯一同名书时回填，歧义记录保留 legacy 身份。
+     * 空 deviceId 的来源无法证明，原样保留其贡献，不复制到本机累计值中。
+     */
+    val migration_93_94 = object : Migration(93, 94) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """CREATE TABLE `readRecord_new` (
+                    `deviceId` TEXT NOT NULL, `bookName` TEXT NOT NULL,
+                    `readTime` INTEGER NOT NULL DEFAULT 0, `lastRead` INTEGER NOT NULL DEFAULT 0,
+                    `author` TEXT NOT NULL DEFAULT '', `coverUrl` TEXT NOT NULL DEFAULT '',
+                    `bookUrl` TEXT NOT NULL DEFAULT '', `coverOrigin` TEXT NOT NULL DEFAULT '',
+                    PRIMARY KEY(`deviceId`, `bookUrl`))"""
+            )
+            db.execSQL(
+                """INSERT INTO readRecord_new
+                    (deviceId, bookName, readTime, lastRead, author, coverUrl, bookUrl, coverOrigin)
+                    SELECT r.deviceId, r.bookName, r.readTime, r.lastRead,
+                        coalesce(b.author, ''),
+                        coalesce(nullif(b.customCoverUrl, ''), b.coverUrl, ''),
+                        coalesce(b.bookUrl, 'legacy:' || hex(r.bookName)),
+                        case when coalesce(b.customCoverUrl, '') != '' then ''
+                             else coalesce(b.origin, '') end
+                    FROM readRecord r
+                    LEFT JOIN books b ON b.name = r.bookName
+                        AND (SELECT count(*) FROM books sameName WHERE sameName.name = r.bookName) = 1"""
+            )
+            db.execSQL("DROP TABLE readRecord")
+            db.execSQL("ALTER TABLE readRecord_new RENAME TO readRecord")
+            db.execSQL("CREATE INDEX `index_readRecord_bookUrl_lastRead` ON readRecord (`bookUrl`, `lastRead`)")
         }
     }
 

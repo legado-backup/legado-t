@@ -8,6 +8,9 @@ import io.legado.app.constant.AppConst
 import io.legado.app.constant.PreferKey
 import io.legado.app.constant.sysElevation
 import io.legado.app.data.appDb
+import io.legado.app.model.AudioPlay
+import io.legado.app.model.ReadBook
+import io.legado.app.model.ReadManga
 import io.legado.app.utils.canvasrecorder.CanvasRecorderFactory
 import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.getPrefInt
@@ -235,6 +238,9 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
 
     val showDiscovery: Boolean
         get() = appCtx.getPrefBoolean(PreferKey.showDiscovery, true)
+
+    val legacyExplore: Boolean
+        get() = appCtx.getPrefBoolean(PreferKey.legacyExplore, false)
 
     val showRSS: Boolean
         get() = appCtx.getPrefBoolean(PreferKey.showRss, true)
@@ -488,6 +494,10 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
     var enableReadRecord: Boolean
         get() = appCtx.getPrefBoolean(PreferKey.enableReadRecord, true)
         set(value) {
+            // 会话在各自的锁内按旧开关结算，并保留页面/朗读/播放状态。
+            ReadBook.setReadRecordEnabled(value)
+            ReadManga.setReadRecordEnabled(value)
+            AudioPlay.setReadRecordEnabled(value)
             appCtx.putPrefBoolean(PreferKey.enableReadRecord, value)
         }
 

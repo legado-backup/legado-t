@@ -38,6 +38,7 @@ import io.legado.app.help.exoplayer.ExoPlayerHelper
 import io.legado.app.help.glide.ImageLoader
 import io.legado.app.model.AudioCache
 import io.legado.app.model.AudioPlay
+import io.legado.app.model.AudioPlaySpeed
 import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.model.analyzeRule.getMediaItem
 import io.legado.app.receiver.MediaButtonReceiver
@@ -167,7 +168,7 @@ class AudioPlayService : BaseService(),
                     pause = false
                     position = AudioPlay.book?.durChapterPos ?: 0
                     url = AudioPlay.durPlayUrl
-                    playSpeed = AudioPlay.book?.getAudioPlaySpeed() ?: 1f
+                    playSpeed = AudioPlaySpeed.clamp(AudioPlay.book?.getAudioPlaySpeed() ?: 1f)
                     AudioPlay.markReadTimeStart()
                     resetSkipState()
                     play()
@@ -179,7 +180,7 @@ class AudioPlayService : BaseService(),
                     pause = false
                     position = 0
                     url = AudioPlay.durPlayUrl
-                    playSpeed = AudioPlay.book?.getAudioPlaySpeed() ?: 1f
+                    playSpeed = AudioPlaySpeed.clamp(AudioPlay.book?.getAudioPlaySpeed() ?: 1f)
                     AudioPlay.markReadTimeStart()
                     resetSkipState()
                     play()
@@ -197,7 +198,13 @@ class AudioPlayService : BaseService(),
                 IntentAction.resume -> resume()
                 IntentAction.prev -> AudioPlay.prev()
                 IntentAction.next -> AudioPlay.next()
-                IntentAction.adjustSpeed -> upSpeed(intent.getFloatExtra("adjust", 1f))
+                IntentAction.adjustSpeed -> {
+                    if (intent.hasExtra("speed")) {
+                        setSpeed(intent.getFloatExtra("speed", 1f))
+                    } else {
+                        upSpeed(intent.getFloatExtra("adjust", 1f))
+                    }
+                }
                 IntentAction.addTimer -> addTimer()
                 IntentAction.setTimer -> setTimer(intent.getIntExtra("minute", 0))
                 IntentAction.setChapterStop -> setChapterStop(intent.getIntExtra("count", 0))
@@ -243,6 +250,7 @@ class AudioPlayService : BaseService(),
         }
         upAudioPlayNotification()
         if (!requestFocus()) {
+            AudioPlay.upReadTime()
             return
         }
         execute(context = Main) {
@@ -351,14 +359,26 @@ class AudioPlayService : BaseService(),
     @SuppressLint(value = ["ObsoleteSdkInt"])
     private fun upSpeed(adjust: Float) {
         kotlin.runCatching {
-
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                playSpeed = (playSpeed + adjust).coerceIn(0.5f, 3f)
-                exoPlayer.setPlaybackSpeed(playSpeed)
-                postEvent(EventBus.AUDIO_SPEED, playSpeed)
-                AudioPlay.savePlaySpeed(playSpeed)
+                applySpeed(AudioPlaySpeed.adjust(playSpeed, adjust))
             }
         }
+    }
+
+    @SuppressLint(value = ["ObsoleteSdkInt"])
+    private fun setSpeed(speed: Float) {
+        kotlin.runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                applySpeed(AudioPlaySpeed.clamp(speed))
+            }
+        }
+    }
+
+    private fun applySpeed(speed: Float) {
+        playSpeed = AudioPlaySpeed.clamp(speed)
+        exoPlayer.setPlaybackSpeed(playSpeed)
+        postEvent(EventBus.AUDIO_SPEED, playSpeed)
+        AudioPlay.savePlaySpeed(playSpeed)
     }
 
     /**
@@ -430,6 +450,7 @@ class AudioPlayService : BaseService(),
     override fun onPlayerError(error: PlaybackException) {
         super.onPlayerError(error)
         if (tryRecoverFromBrokenCache(error)) return
+        AudioPlay.upReadTime()
         AudioPlay.status = Status.STOP
         postEvent(EventBus.AUDIO_STATE, Status.STOP)
         AudioPlay.upLoading(false)

@@ -94,6 +94,7 @@ object SourceCallBack {
         Coroutine.async {
             withTimeout(30000L) {
                 runScriptWithContext(coroutineContext) {
+                    // 通知事件保留 evalJS 默认的 java=source，不注入绑定页面的 facade。
                     source.evalJS(jsStr) {
                         put("event", event)
                         put("result", result)
@@ -115,6 +116,7 @@ object SourceCallBack {
             kotlin.runCatching {
                 withTimeout(30000L) {
                     runScriptWithContext {
+                        // 与书籍通知相同，继续使用源自身的通用 java 扩展。
                         source.evalJS(jsStr) {
                             put("event", event)
                             put("result", null)

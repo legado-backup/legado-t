@@ -264,6 +264,7 @@ abstract class BaseReadAloudService : BaseService(),
         }
         isRun = false
         pause = true
+        ReadBook.setReadRecordActive("aloud", false)
         abandonFocus()
         unregisterReceiver(broadcastReceiver)
         postEvent(EventBus.ALOUD_STATE, Status.STOP)
@@ -355,6 +356,7 @@ abstract class BaseReadAloudService : BaseService(),
         }
         isRun = true
         pause = false
+        ReadBook.setReadRecordActive("aloud", true)
         needResumeOnAudioFocusGain = false
         needResumeOnCallStateIdle = false
         upReadAloudNotification()
@@ -371,6 +373,7 @@ abstract class BaseReadAloudService : BaseService(),
             wifiLock?.release()
         }
         pause = true
+        ReadBook.setReadRecordActive("aloud", false)
         if (abandonFocus) {
             abandonFocus()
         }
@@ -389,6 +392,7 @@ abstract class BaseReadAloudService : BaseService(),
 
     private fun resumeReadAloudInternal() {
         pause = false
+        ReadBook.setReadRecordActive("aloud", true)
         needResumeOnAudioFocusGain = false
         needResumeOnCallStateIdle = false
         upReadAloudNotification()

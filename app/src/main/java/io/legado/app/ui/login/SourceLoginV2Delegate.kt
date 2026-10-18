@@ -5,6 +5,7 @@ import android.text.InputType
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.setPadding
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.materialswitch.MaterialSwitch
@@ -49,6 +50,7 @@ class SourceLoginV2Delegate(
     private var stateJson: String = "{}"
     private var renderJob: Job? = null
     private var actionJob: Job? = null
+    private var destroyed = false
 
     /** 仅首次渲染显示底部加载动画,避免每次按钮重渲染都闪一下导致弹窗尺寸抖动 */
     private var firstRender = true
@@ -68,7 +70,7 @@ class SourceLoginV2Delegate(
     private val countdownLeft = hashMapOf<String, Int>()
     private val countdownTimers = hashMapOf<String, CountDownTimer>()
 
-    private val scope get() = fragment.lifecycleScope
+    private val scope get() = fragment.viewLifecycleOwner.lifecycleScope
     private val inflater: LayoutInflater get() = fragment.layoutInflater
 
     fun start() {
@@ -76,6 +78,7 @@ class SourceLoginV2Delegate(
     }
 
     fun destroy() {
+        destroyed = true
         renderJob?.cancel()
         actionJob?.cancel()
         countdownTimers.values.forEach { it.cancel() }
@@ -83,7 +86,9 @@ class SourceLoginV2Delegate(
     }
 
     private fun render() {
+        if (destroyed) return
         renderJob?.cancel()
+        val java = SourceCallbackJsExtensions(fragment.activity as? AppCompatActivity, source)
         renderJob = scope.launch {
             val showLoading = firstRender
             firstRender = false
@@ -92,7 +97,9 @@ class SourceLoginV2Delegate(
             val result = withContext(IO) {
                 kotlin.runCatching {
                     runScriptWithContext {
-                        val rows = LoginUiV2.parseRender(source.evalLoginUiV2(stateJson, book, chapter))
+                        val rows = LoginUiV2.parseRender(
+                            source.evalLoginUiV2WithJava(stateJson, book, chapter, java)
+                        )
                         rows to source.getLoginInfoMap()
                     }
                 }.onFailure { e ->
@@ -281,10 +288,11 @@ class SourceLoginV2Delegate(
     }
 
     private fun dispatch(action: String, countdownSec: Int?, actionView: View? = null) {
-        if (actionJob?.isActive == true) return
+        if (destroyed || actionJob?.isActive == true) return
         if (countdownLeft.getOrDefault(action, 0) > 0) return
         clearErrors()
         val formJson = GSON.toJson(collectForm())
+        val java = SourceCallbackJsExtensions(fragment.activity as? AppCompatActivity, source)
         val control = actionView ?: buttonViews[action]
         toggleActionViews.forEach { it.isEnabled = false }
         control?.isEnabled = false
@@ -294,16 +302,25 @@ class SourceLoginV2Delegate(
                 val result = withContext(IO) {
                     kotlin.runCatching {
                         runScriptWithContext {
-                            source.evalLoginActionV2(action, stateJson, formJson, book, chapter)
+                            source.evalLoginActionV2WithJava(
+                                action,
+                                stateJson,
+                                formJson,
+                                book,
+                                chapter,
+                                java,
+                            )
                         }
                     }.onFailure { e ->
                         ensureActive()
                         AppLog.put("登录UI v2 动作 $action 出错", e)
-                        fragment.context?.toastOnUi("动作出错\n${e.localizedMessage}")
                     }
                 }
                 ensureActive()
-                if (result.isFailure) return@launch
+                if (result.isFailure) {
+                    fragment.context?.toastOnUi("动作出错\n${result.exceptionOrNull()?.localizedMessage}")
+                    return@launch
+                }
                 val cmd = LoginUiV2.parseActionResult(result.getOrNull())
                 cmd.unknownKeys.forEach {
                     AppLog.put("登录UI v2 动作 $action 返回未知命令 $it,已忽略")
@@ -324,9 +341,11 @@ class SourceLoginV2Delegate(
                     render()
                 }
             } finally {
-                toggleActionViews.forEach { it.isEnabled = true }
-                control?.isEnabled = true
-                control?.alpha = 1f
+                if (!destroyed) {
+                    toggleActionViews.forEach { it.isEnabled = true }
+                    control?.isEnabled = true
+                    control?.alpha = 1f
+                }
             }
         }
     }

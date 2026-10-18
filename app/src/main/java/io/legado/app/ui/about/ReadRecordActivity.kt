@@ -101,8 +101,11 @@ class ReadRecordActivity : BaseActivity<ActivityReadRecordBinding>() {
         binding.tvRemove.setOnClickListener {
             alert(R.string.delete, R.string.sure_del) {
                 yesButton {
-                    appDb.readRecordDao.clear()
-                    initData()
+                    lifecycleScope.launch {
+                        withContext(IO) { appDb.readRecordDao.clear() }
+                        initData()
+                        initAllTime()
+                    }
                 }
                 noButton()
             }
@@ -171,6 +174,14 @@ class ReadRecordActivity : BaseActivity<ActivityReadRecordBinding>() {
         ) {
             binding.apply {
                 tvBookName.text = item.bookName
+                tvAuthor.text = item.author.ifBlank { getString(R.string.unknown_state) }
+                ivCover.load(
+                    item.coverUrl,
+                    item.bookName,
+                    item.author,
+                    AppConfig.loadCoverOnlyWifi,
+                    item.coverOrigin.takeIf { it.isNotBlank() },
+                )
                 tvReadingTime.text = formatDuring(item.readTime)
                 if (item.lastRead > 0) {
                     tvLastReadTime.text = dateFormat.format(item.lastRead)
@@ -186,7 +197,10 @@ class ReadRecordActivity : BaseActivity<ActivityReadRecordBinding>() {
                     val item = getItem(holder.layoutPosition) ?: return@setOnClickListener
                     lifecycleScope.launch {
                         val book = withContext(IO) {
-                            appDb.bookDao.findByName(item.bookName).firstOrNull()
+                            appDb.bookDao.getBook(item.bookUrl)
+                                ?: item.author.takeIf { it.isNotBlank() }?.let {
+                                    appDb.bookDao.getBook(item.bookName, it)
+                                }
                         }
                         if (book == null) {
                             SearchActivity.start(this@ReadRecordActivity, item.bookName)
@@ -207,8 +221,11 @@ class ReadRecordActivity : BaseActivity<ActivityReadRecordBinding>() {
             alert(R.string.delete) {
                 setMessage(getString(R.string.sure_del_any, item.bookName))
                 yesButton {
-                    appDb.readRecordDao.deleteByName(item.bookName)
-                    initData()
+                    lifecycleScope.launch {
+                        withContext(IO) { appDb.readRecordDao.deleteByBookUrl(item.bookUrl) }
+                        initData(searchView.query.toString())
+                        initAllTime()
+                    }
                 }
                 noButton()
             }

@@ -285,22 +285,17 @@ object Restore {
                 AppLog.put("恢复发现容器出错\n${it.localizedMessage}", it)
             }
         }
-        fileToListT<ReadRecord>(path, "readRecord.json")?.let {
-            it.forEach { readRecord ->
-                //判断是不是本机记录
-                if (readRecord.deviceId != AppConst.androidId) {
-                    kotlin.runCatching {
-                        appDb.readRecordDao.insert(readRecord)
-                    }
-                } else {
-                    val time = appDb.readRecordDao
-                        .getReadTime(readRecord.deviceId, readRecord.bookName)
-                    if (time == null || time < readRecord.readTime) {
-                        kotlin.runCatching {
-                            appDb.readRecordDao.insert(readRecord)
-                        }
-                    }
-                }
+        fileToListT<ReadRecord>(path, "readRecord.json")?.forEach { readRecord ->
+            kotlin.runCatching {
+                val resolved = ReadRecordRestore.resolve(
+                    readRecord,
+                    appDb.readRecordDao.getRecordsByName(readRecord.deviceId, readRecord.bookName),
+                    appDb.bookDao.findByName(readRecord.bookName),
+                )
+                // 保留旧空 deviceId；其累计值的来源未知，不猜测属于本机。
+                appDb.readRecordDao.merge(resolved)
+            }.onFailure {
+                AppLog.put("恢复阅读记录出错\n${it.localizedMessage}", it)
             }
         }
         File(path, "servers.json").takeIf {

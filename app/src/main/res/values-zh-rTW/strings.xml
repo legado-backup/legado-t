@@ -152,6 +152,7 @@
     <string name="audio_play">播放</string>
     <string name="audio_play_t">正在播放</string>
     <string name="audio_play_s">點擊打開播放介面</string>
+    <string name="audio_play_speed">播放速度</string>
     <string name="audio_pause">播放暫停</string>
     <string name="text_return">返回</string>
     <string name="refresh">重新整理</string>

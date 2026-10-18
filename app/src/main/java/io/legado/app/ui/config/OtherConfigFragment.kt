@@ -278,6 +278,7 @@ class OtherConfigFragment : PreferenceFragment(),
             }
 
             PreferKey.showDiscovery, PreferKey.showRss -> postEvent(EventBus.NOTIFY_MAIN, true)
+            PreferKey.legacyExplore -> postEvent(PreferKey.legacyExplore, true)
             PreferKey.language -> listView.postDelayed(1000) {
                 appCtx.restart()
             }

@@ -52,6 +52,7 @@ import io.legado.app.ui.main.bookshelf.BaseBookshelfFragment
 import io.legado.app.ui.main.bookshelf.style1.BookshelfFragment1
 import io.legado.app.ui.main.bookshelf.style2.BookshelfFragment2
 import io.legado.app.ui.main.explore.ExploreFragment
+import io.legado.app.ui.main.explore.LegacyExploreFragment
 import io.legado.app.ui.main.my.MyFragment
 import io.legado.app.ui.main.rss.RssFragment
 import io.legado.app.ui.widget.dialog.TextDialog
@@ -88,6 +89,7 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
     private val idBookshelf1 = 11
     private val idBookshelf2 = 12
     private val idExplore = 1
+    private val idLegacyExplore = 13
     private val idRss = 2
     private val idMy = 3
     private var exitTime: Long = 0
@@ -263,7 +265,9 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
                 if (System.currentTimeMillis() - exploreReselected > 300) {
                     exploreReselected = System.currentTimeMillis()
                 } else {
-                    (findFragmentById(idExplore) as? ExploreFragment)?.gotoTop()
+                    val exploreFragment = findFragmentById(getExploreFragmentId())
+                    (exploreFragment as? ExploreFragment)?.gotoTop()
+                        ?: (exploreFragment as? LegacyExploreFragment)?.gotoTop()
                 }
             }
         }
@@ -474,6 +478,9 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         observeEvent<String>(PreferKey.threadCount) {
             viewModel.upPool()
         }
+        observeEvent<Boolean>(PreferKey.legacyExplore) {
+            adapter.notifyDataSetChanged()
+        }
         observeEvent<List<Book>>(EventBus.UP_BOOKS_TOC) {
             viewModel.upToc(it, cache = false)
         }
@@ -535,8 +542,12 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         if (id == idBookshelf) {
             return if (AppConfig.bookGroupStyle == 1) idBookshelf2 else idBookshelf1
         }
+        if (id == idExplore) return getExploreFragmentId()
         return id
     }
+
+    private fun getExploreFragmentId(): Int =
+        if (AppConfig.legacyExplore) idLegacyExplore else idExplore
 
     /**
      * FragmentStateAdapter 固定按 "f" + itemId 建 tag,本页 itemId = getFragmentId(position)。
@@ -579,6 +590,7 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
                 idBookshelf1 -> BookshelfFragment1(position)
                 idBookshelf2 -> BookshelfFragment2(position)
                 idExplore -> ExploreFragment(position)
+                idLegacyExplore -> LegacyExploreFragment(position)
                 idRss -> RssFragment(position)
                 else -> MyFragment(position)
             }
