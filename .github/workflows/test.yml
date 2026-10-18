@@ -15,7 +15,7 @@ jobs:
 
   prepare:
     runs-on: ubuntu-latest
-    if: ${{ !startsWith(github.event.head_commit.message, 'Merge pull request') }}
+    if: ${{ github.ref == 'refs/heads/master' }}
     outputs:
       version: ${{ steps.set-ver.outputs.version }}
       versionL: ${{ steps.set-ver.outputs.versionL }}
@@ -266,10 +266,13 @@ jobs:
 
   prerelease:
     needs: [ prepare, build, test ]
+    concurrency:
+      group: legado-beta-promotion
+      cancel-in-progress: false
     permissions:
       contents: write
       actions: read
-    if: github.event_name != 'pull_request' && github.repository == 'skybbk1001/legadoT'
+    if: github.ref == 'refs/heads/master' && github.repository == 'skybbk1001/legadoT'
     runs-on: ubuntu-latest
     env: 
       VERSION: ${{ needs.prepare.outputs.version }}
@@ -328,114 +331,121 @@ jobs:
           done
           test -s version.json
 
-      - name: Create verified beta candidate
-        env:
-          GH_TOKEN: ${{ github.token }}
-          CANDIDATE_TAG: beta-candidate-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Prepare stable beta assets
+        working-directory: apk/
         run: |
-          apk_files=("${{ github.workspace }}"/apk/*.apk)
-          if [ "${#apk_files[@]}" -ne 3 ] || [ ! -s "${{ github.workspace }}/apk/version.json" ]; then
+          set -euo pipefail
+          shopt -s nullglob
+          apk_files=(*.apk)
+          if [ "${#apk_files[@]}" -ne 3 ] || [ ! -s version.json ]; then
             echo "Expected 3 ABI APKs and a non-empty version.json."
             exit 1
           fi
+          found_abis=()
           for file in "${apk_files[@]}"; do
-            if [ ! -s "$file" ]; then
-              echo "Missing or empty APK: $file"
+            abi=$(basename "$file" | grep -oE 'arm64-v8a|armeabi-v7a|x86_64' || true)
+            if [ -z "$abi" ]; then
+              echo "Cannot determine ABI from APK: $file"
               exit 1
             fi
-          done
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag "$CANDIDATE_TAG" "$GITHUB_SHA"
-          git push origin "refs/tags/$CANDIDATE_TAG"
-          gh release create "$CANDIDATE_TAG" \
-            --verify-tag \
-            --draft \
-            --prerelease \
-            --title "legado_app_${{ env.VERSION }}" \
-            --notes-file "$GITHUB_WORKSPACE/release.md" \
-            "${apk_files[@]}" \
-            "$GITHUB_WORKSPACE/apk/version.json"
-
-          asset_count=$(gh release view "$CANDIDATE_TAG" --json assets --jq '.assets | length')
-          if [ "$asset_count" -ne 4 ]; then
-            echo "Expected 4 beta assets, found $asset_count"
-            exit 1
-          fi
-          remote_assets=$(gh release view "$CANDIDATE_TAG" --json assets --jq '[.assets[].name]')
-          for file in "${apk_files[@]}" "$GITHUB_WORKSPACE/apk/version.json"; do
-            name=$(basename "$file")
-            if ! jq -e --arg name "$name" 'index($name) != null' <<< "$remote_assets" >/dev/null; then
-              echo "Candidate release is missing asset: $name"
+            if [[ " ${found_abis[*]} " == *" $abi "* ]]; then
+              echo "Duplicate ABI APK: $abi"
               exit 1
             fi
+            found_abis+=("$abi")
+            mv -- "$file" "legado_app_${abi}_release.apk"
           done
 
-      - name: Promote verified beta candidate
+      - name: Publish stable beta release
         env:
           GH_TOKEN: ${{ github.token }}
-          CANDIDATE_TAG: beta-candidate-${{ github.run_id }}-${{ github.run_attempt }}
         run: |
-          old_beta_commit=$(git rev-parse 'refs/tags/beta^{commit}' 2>/dev/null || echo '')
-          old_beta_release_id=$(gh release view beta --json databaseId --jq '.databaseId' 2>/dev/null || echo '')
-          candidate_release_id=$(gh release view "$CANDIDATE_TAG" --json databaseId --jq '.databaseId')
-          if [ -n "$old_beta_release_id" ] && [ -z "$old_beta_commit" ]; then
-            echo "The existing beta release has no resolvable beta tag; refusing promotion."
+          set -euo pipefail
+          stable_assets=("${{ github.workspace }}"/apk/legado_app_*_release.apk)
+          stable_assets+=("${{ github.workspace }}/apk/version.json")
+          if [ "${#stable_assets[@]}" -ne 4 ]; then
+            echo "Expected 4 stable beta assets, found ${#stable_assets[@]}"
             exit 1
           fi
+          for file in "${stable_assets[@]}"; do
+            test -s "$file" || { echo "Missing or empty asset: $file"; exit 1; }
+          done
 
-          beta_tag_update_attempted=false
-          candidate_publish_attempted=false
-          promotion_complete=false
-          rollback_promotion() {
+          old_beta_commit=$(git rev-parse 'refs/tags/beta^{commit}' 2>/dev/null || true)
+          beta_release_created=false
+          beta_tag_created=false
+          beta_tag_updated=false
+          publish_complete=false
+          cleanup_new_beta() {
             status=$?
-            if [ "$status" -ne 0 ] && [ "$promotion_complete" != true ]; then
-              echo "Promotion failed; restoring the previous beta where possible."
-              if [ "$candidate_publish_attempted" = true ]; then
-                gh api --method PATCH \
-                  "/repos/$GITHUB_REPOSITORY/releases/$candidate_release_id" \
-                  -f "tag_name=$CANDIDATE_TAG" -F draft=true -F prerelease=true || true
+            if [ "$status" -ne 0 ] && [ "$publish_complete" != true ]; then
+              if [ "$beta_tag_updated" = true ] && [ -n "$old_beta_commit" ]; then
+                echo "Beta publication failed; restoring the previous beta tag."
+                git push origin "$old_beta_commit:refs/tags/beta" --force || true
+              elif [ "$beta_tag_created" = true ]; then
+                git push origin --delete beta 2>/dev/null || true
               fi
-              if [ "$beta_tag_update_attempted" = true ]; then
+              if [ "$beta_release_created" = true ]; then
+                echo "Removing the newly created draft release."
                 if [ -n "$old_beta_commit" ]; then
-                  git push origin "$old_beta_commit:refs/tags/beta" --force || true
+                  gh release delete beta --yes || true
                 else
-                  git push origin --delete beta 2>/dev/null || true
+                  gh release delete beta --yes --cleanup-tag || true
                 fi
               fi
             fi
             return "$status"
           }
-          trap rollback_promotion EXIT
+          trap cleanup_new_beta EXIT
 
-          # GitHub does not allow an already-published release to be renamed to
-          # a backup tag. Delete the old beta only after candidate verification.
-          if [ -n "$old_beta_release_id" ]; then
-            gh release delete beta --yes --cleanup-tag
-          elif [ -n "$old_beta_commit" ]; then
-            git push origin --delete beta
+          if [ -z "$old_beta_commit" ]; then
+            git push origin "$GITHUB_SHA:refs/tags/beta"
+            beta_tag_created=true
+          fi
+          if ! gh release view beta >/dev/null 2>&1; then
+            gh release create beta \
+              --verify-tag \
+              --draft \
+              --prerelease \
+              --title "legado_app_${{ env.VERSION }}" \
+              --notes-file "${{ github.workspace }}/release.md"
+            beta_release_created=true
           fi
 
-          beta_tag_update_attempted=true
+          # Keep the published beta release object and replace only its stable
+          # asset names. A failed upload never deletes the previous release.
+          gh release upload beta "${stable_assets[@]}" --clobber
+          beta_tag_updated=true
           git push origin "$GITHUB_SHA:refs/tags/beta" --force
-          candidate_publish_attempted=true
-          gh api --method PATCH \
-            "/repos/$GITHUB_REPOSITORY/releases/$candidate_release_id" \
-            -f tag_name=beta \
-            -f "target_commitish=$GITHUB_SHA" \
-            -f "name=legado_app_${{ env.VERSION }}" \
-            -F draft=false \
-            -F prerelease=true \
-            -F make_latest=false
+          release_id=$(gh release view beta --json databaseId --jq '.databaseId')
+          release_body=$(cat "${{ github.workspace }}/release.md")
+          jq -n \
+            --arg name "legado_app_${{ env.VERSION }}" \
+            --arg body "$release_body" \
+            '{name: $name, body: $body, draft: false, prerelease: true, make_latest: false}' \
+            | gh api --method PATCH \
+              "/repos/$GITHUB_REPOSITORY/releases/$release_id" \
+              --input - >/dev/null
 
-          promotion_complete=true
+          expected_assets='["legado_app_arm64-v8a_release.apk","legado_app_armeabi-v7a_release.apk","legado_app_x86_64_release.apk","version.json"]'
+          remote_assets=$(gh release view beta --json assets --jq '[.assets[].name]')
+          for name in $(jq -r '.[]' <<< "$expected_assets"); do
+            jq -e --arg name "$name" 'index($name) != null' <<< "$remote_assets" >/dev/null || {
+              echo "Beta release is missing asset: $name"
+              exit 1
+            }
+          done
+          while IFS=$'\t' read -r asset_id name; do
+            if ! jq -e --arg name "$name" 'index($name) != null' <<< "$expected_assets" >/dev/null; then
+              gh api --method DELETE "/repos/$GITHUB_REPOSITORY/releases/assets/$asset_id" >/dev/null
+            fi
+          done < <(gh release view beta --json assets --jq '.assets[] | [.id, .name] | @tsv')
+          test "$(gh release view beta --json assets --jq '.assets | length')" -eq 4
+          publish_complete=true
           trap - EXIT
-          git push origin --delete "$CANDIDATE_TAG" || echo "Warning: candidate tag remains at $CANDIDATE_TAG"
-          git tag -d "$CANDIDATE_TAG" 2>/dev/null || true
 
   lanzou:
-    needs: [ prepare, build, test ]
+    needs: [ prepare, build, test, prerelease ]
     if: ${{ github.event_name != 'pull_request' && needs.prepare.outputs.lanzou == 'yes' }}
     runs-on: ubuntu-latest
     env:
@@ -470,7 +480,7 @@ jobs:
           echo "[$(date -u -d '+8 hour' '+%Y.%m.%d %H:%M:%S')] 分享链接: $LANZOU_URL"
 
   telegram:
-    needs: [ prepare, build, test ]
+    needs: [ prepare, build, test, prerelease ]
     if: ${{ github.event_name != 'pull_request' && needs.prepare.outputs.telegram == 'yes' }}
     runs-on: ubuntu-latest
     steps:
