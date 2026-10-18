@@ -4,6 +4,7 @@ import androidx.annotation.ColorInt
 import com.google.android.material.color.utilities.Hct
 import io.legado.app.help.config.AppConfig
 import splitties.init.appCtx
+import kotlin.math.pow
 
 /**
  * 全 app 单一取色源生成的完整 M3 色板。
@@ -172,12 +173,28 @@ object AppColorScheme {
         surfaceDim = EINK_CONTAINER,
     )
 
-    /**
-     * 保真直出时的 onPrimary:按种子 tone 取黑或白。
-     * 对比度交叉点在 tone≈50,阈值 60 与 M3 惯例一致,中明度色偏向白字。
-     */
-    private fun fidelityOnColor(@ColorInt color: Int): Int =
-        if (Hct.fromInt(color).tone >= 60) BLACK else WHITE
+    /** 保真直出时选择对比度更高的黑/白前景。 */
+    private fun fidelityOnColor(@ColorInt color: Int): Int {
+        val blackContrast = contrastRatio(BLACK, color)
+        val whiteContrast = contrastRatio(WHITE, color)
+        return if (blackContrast >= whiteContrast) BLACK else WHITE
+    }
+
+    private fun contrastRatio(@ColorInt foreground: Int, @ColorInt background: Int): Double {
+        fun luminance(@ColorInt color: Int): Double {
+            fun channel(value: Int): Double {
+                val normalized = value / 255.0
+                return if (normalized <= 0.03928) normalized / 12.92
+                else ((normalized + 0.055) / 1.055).pow(2.4)
+            }
+            return 0.2126 * channel(color shr 16 and 0xFF) +
+                    0.7152 * channel(color shr 8 and 0xFF) +
+                    0.0722 * channel(color and 0xFF)
+        }
+        val first = luminance(foreground)
+        val second = luminance(background)
+        return (maxOf(first, second) + 0.05) / (minOf(first, second) + 0.05)
+    }
 
     private fun Int.shiftTone(delta: Double): Int {
         val hct = Hct.fromInt(this)

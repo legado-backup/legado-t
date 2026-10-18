@@ -431,6 +431,8 @@ Cron 使用 5 个字段：**分 时 日 月 周**
     <string name="un_download">还剩 %d 章未下载</string>
     <string name="long_click_input_color">长按输入颜色值</string>
     <string name="loading">加载中…</string>
+    <string name="reload">重新加载</string>
+    <string name="main_content">主要内容</string>
     <string name="group_zg">追更区</string>
     <string name="group_yf">养肥区</string>
     <string name="bookmark">书签</string>
@@ -1019,6 +1021,11 @@ Cron 使用 5 个字段：**分 时 日 月 周**
     <string name="sort_by_lastUpdateTime">更新时间排序</string>
     <string name="search_content">全文搜索</string>
     <string name="search_content_size">搜索结果</string>
+    <string name="search_previous_result">上个结果</string>
+    <string name="search_next_result">下个结果</string>
+    <string name="search_results">结果</string>
+    <string name="search_exit">退出搜索</string>
+    <string name="current_chapter">当前章节</string>
     <string name="search_content_empty">搜索内容为空，请检查净化或简繁设置</string>
     <string name="rss_source_empty">RSS 源目前为空！</string>
     <string name="explore_empty">当前没有发现源！</string>

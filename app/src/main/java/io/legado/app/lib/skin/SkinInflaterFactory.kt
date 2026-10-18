@@ -183,6 +183,24 @@ class SkinInflaterFactory(activity: AppCompatActivity) : LayoutInflater.Factory2
         val scheme = AppColorScheme.current
         val disabledStates = arrayOf(intArrayOf(-android.R.attr.state_enabled), intArrayOf())
         when (attrs.styleAttribute) {
+            R.style.Widget_App_Button -> {
+                view.backgroundTintList = ColorStateList(
+                    disabledStates,
+                    intArrayOf(
+                        ColorUtils.withAlpha(scheme.onSurface, 0.12f),
+                        scheme.primary,
+                    )
+                )
+                val fg = ColorStateList(
+                    disabledStates,
+                    intArrayOf(ColorUtils.withAlpha(scheme.onSurface, 0.38f), scheme.onPrimary)
+                )
+                view.setTextColor(fg)
+                view.iconTint = fg
+                view.rippleColor =
+                    ColorStateList.valueOf(ColorUtils.withAlpha(scheme.onPrimary, 0.12f))
+            }
+
             R.style.Widget_App_Button_Text -> {
                 val fg = ColorStateList(
                     disabledStates,

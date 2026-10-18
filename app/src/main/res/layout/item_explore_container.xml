@@ -69,6 +69,9 @@
 
             <io.legado.app.ui.widget.text.AccentTextView
                 android:id="@+id/tv_next_batch"
+                android:minHeight="48dp"
+                android:minWidth="48dp"
+                android:gravity="center"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:background="?android:attr/selectableItemBackground"

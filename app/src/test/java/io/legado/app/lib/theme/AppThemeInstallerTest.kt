@@ -38,13 +38,15 @@ class AppThemeInstallerTest {
         assertEquals(scheme.background, colors[R.color.background])
         assertEquals(scheme.surfaceContainerLow, colors[R.color.background_card])
         assertEquals(scheme.surfaceContainerLow, colors[R.color.background_popup_menu])
+        assertEquals(scheme.surfaceContainer, colors[R.color.background_menu])
+        assertEquals(io.legado.app.utils.ColorUtils.withAlpha(scheme.onSurface, 0.12f), colors[R.color.divider])
         assertEquals(scheme.error, colors[R.color.error])
         // primaryText and secondaryText are intentionally not overridden:
         // 118+ 布局直引、背景上下文多样,维持 colors.xml 静态值以保证对比度契约
         assertEquals(null, colors[R.color.primaryText])
         assertEquals(null, colors[R.color.secondaryText])
-        // 34 m3 token + 5 legacy alias
-        assertEquals(39, colors.size)
+        // 34 m3 token + 7 legacy alias
+        assertEquals(41, colors.size)
     }
 
     @Test

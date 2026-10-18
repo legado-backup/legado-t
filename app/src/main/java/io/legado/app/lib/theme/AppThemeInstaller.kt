@@ -35,7 +35,12 @@ object AppThemeInstaller {
      * 弱引用防持有 Resources 强引用;进程内 Resources 是共享单例,按 key 去重后
      * 每个进程至多挂一次,避免各 Activity onCreate 反复 addLoaders 累积 loader/memfd。
      */
-    private val installedLoaders = java.util.WeakHashMap<Resources, ResourcesLoader>()
+    private val installedLoaders = java.util.WeakHashMap<Resources, InstalledPalette>()
+
+    private data class InstalledPalette(
+        val scheme: AppSchemeColors,
+        val loader: ResourcesLoader,
+    )
 
     /**
      * 最近一次 [install] 是否成功把运行时色板表挂到 [Resources]。
@@ -49,12 +54,15 @@ object AppThemeInstaller {
     fun install(activity: AppCompatActivity) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             val resources = activity.resources
+            val scheme = AppColorScheme.current
             isRuntimeTableInstalled = synchronized(installedLoaders) {
-                if (installedLoaders.containsKey(resources)) {
+                val installed = installedLoaders[resources]
+                if (installed?.scheme == scheme) {
                     true
                 } else {
-                    installTable(resources, activity)?.also {
-                        installedLoaders[resources] = it
+                    installTable(resources, activity, scheme)?.also { loader ->
+                        installed?.loader?.let { resources.removeLoaders(it) }
+                        installedLoaders[resources] = InstalledPalette(scheme, loader)
                     } != null
                 }
             }
@@ -121,6 +129,8 @@ object AppThemeInstaller {
         R.color.background to scheme.background,
         R.color.background_card to scheme.surfaceContainerLow,
         R.color.background_popup_menu to scheme.surfaceContainerLow,
+        R.color.background_menu to scheme.surfaceContainer,
+        R.color.divider to io.legado.app.utils.ColorUtils.withAlpha(scheme.onSurface, 0.12f),
         R.color.error to scheme.error,
     )
 
@@ -131,13 +141,17 @@ object AppThemeInstaller {
      * 由调用方统一落位 isRuntimeTableInstalled=false + 日志,不向上抛。
      * 与 material 的 ColorResourcesLoaderCreator 同构,但无库内部依赖。
      */
-    private fun installTable(resources: Resources, activity: AppCompatActivity): ResourcesLoader? {
+    private fun installTable(
+        resources: Resources,
+        activity: AppCompatActivity,
+        scheme: AppSchemeColors,
+    ): ResourcesLoader? {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return null
         return try {
             val table = colorResourcesTable(
                 packageName = activity.packageName,
                 entryNames = activity.resources::getResourceEntryName,
-                scheme = AppColorScheme.current,
+                scheme = scheme,
             )
             var fd: java.io.FileDescriptor? = null
             var pfd: ParcelFileDescriptor? = null

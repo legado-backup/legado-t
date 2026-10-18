@@ -111,7 +111,8 @@ class ExploreContainerAdapter(context: Context, val callBack: CallBack) :
                     upLightError(binding, item)
                     hostBooks.gone()
                     llBooks.visible()
-                    tvNextBatch.visible()
+                    tvNextBatch.isVisible = !item.loading
+                    tvNextBatch.isEnabled = !item.loading
                     rvBooks.tag = null
                     upListBooks(binding, item, holder)
                 }
@@ -120,7 +121,8 @@ class ExploreContainerAdapter(context: Context, val callBack: CallBack) :
                     upLightError(binding, item)
                     llBooks.gone()
                     hostBooks.visible()
-                    tvNextBatch.visible()
+                    tvNextBatch.isVisible = !item.loading
+                    tvNextBatch.isEnabled = !item.loading
                     val coverAdapter = rvBooks.adapter as ExploreCoverAdapter
                     coverAdapter.onItemLongClick = {
                         showMenu(root, holder.layoutPosition)
@@ -313,7 +315,7 @@ class ExploreContainerAdapter(context: Context, val callBack: CallBack) :
                 getItem(holder.layoutPosition)?.let { callBack.openExplore(it) }
             }
             tvNextBatch.setOnClickListener {
-                getItem(holder.layoutPosition)?.let { callBack.nextBatch(it) }
+                getItem(holder.layoutPosition)?.takeUnless { it.loading }?.let { callBack.nextBatch(it) }
             }
             tvError.setOnClickListener {
                 getItem(holder.layoutPosition)?.let { callBack.refreshContainer(it) }

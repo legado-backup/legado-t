@@ -436,6 +436,8 @@ Placeholders:
     <string name="un_download">%d chapter(s) left</string>
     <string name="long_click_input_color">Long tap to input color value</string>
     <string name="loading">Loading…</string>
+    <string name="reload">Reload</string>
+    <string name="main_content">Main content</string>
     <string name="group_zg">Awaiting</string>
     <string name="group_yf">Awaiting more</string>
     <string name="bookmark">Bookmarks</string>
@@ -1216,6 +1218,11 @@ Placeholders:
     <string name="font_scale_summary">font scale:%.1f</string>
     <string name="global_font">Global font</string>
     <string name="search_content_size">search result</string>
+    <string name="search_previous_result">Previous result</string>
+    <string name="search_next_result">Next result</string>
+    <string name="search_results">Results</string>
+    <string name="search_exit">Exit search</string>
+    <string name="current_chapter">Current chapter</string>
     <string name="search_content_empty">Empty search result, check conversation settings</string>
     <string name="tts_speech_reduce">Decrease speech speed</string>
     <string name="tts_speech_add">Increase speech speed</string>

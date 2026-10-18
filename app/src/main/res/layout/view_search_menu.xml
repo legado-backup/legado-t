@@ -20,7 +20,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_margin="16dp"
-        android:contentDescription="上个结果"
+        android:contentDescription="@string/search_previous_result"
         android:rotation="180"
         android:src="@drawable/ic_arrow_right"
         app:skin_tint="onSurface"
@@ -40,7 +40,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_margin="16dp"
-        android:contentDescription="下个结果"
+        android:contentDescription="@string/search_next_result"
         android:src="@drawable/ic_arrow_right"
         app:skin_tint="onSurface"
         android:tint="@color/primaryText"
@@ -64,7 +64,7 @@
         <LinearLayout
             android:id="@+id/ll_search_base_info"
             android:layout_width="match_parent"
-            android:layout_height="36dp"
+            android:layout_height="48dp"
             android:background="@color/background_menu"
             android:gravity="center_vertical"
             android:orientation="horizontal"
@@ -73,7 +73,8 @@
 
             <androidx.appcompat.widget.AppCompatImageView
                 android:id="@+id/iv_search_content_up"
-                android:layout_width="36dp"
+                 android:visibility="gone"
+                android:layout_width="48dp"
                 android:layout_height="match_parent"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/go_to_top"
@@ -85,7 +86,8 @@
 
             <androidx.appcompat.widget.AppCompatImageView
                 android:id="@+id/iv_search_content_down"
-                android:layout_width="36dp"
+                 android:visibility="gone"
+                android:layout_width="48dp"
                 android:layout_height="match_parent"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/go_to_bottom"
@@ -131,7 +133,7 @@
                 android:layout_height="wrap_content"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 android:clickable="true"
-                android:contentDescription="结果"
+                android:contentDescription="@string/search_results"
                 android:focusable="true"
                 android:orientation="vertical"
                 android:paddingBottom="7dp">
@@ -143,7 +145,7 @@
                     android:layout_height="0dp"
                     android:layout_weight="1"
                     android:adjustViewBounds="true"
-                    android:contentDescription="结果"
+                    android:contentDescription="@string/search_results"
                     android:maxHeight="20dp"
                     android:src="@drawable/ic_toc"
                     app:skin_tint="onSurface"
@@ -157,7 +159,7 @@
                     android:layout_gravity="center_horizontal"
                     android:layout_marginTop="3dp"
                     android:maxLines="1"
-                    android:text="结果"
+                    android:text="@string/search_results"
                     app:skin_textColor="onSurface"
                     android:textColor="@color/primaryText"
                     android:textSize="@dimen/text_caption" />
@@ -217,7 +219,7 @@
                 android:layout_height="wrap_content"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 android:clickable="true"
-                android:contentDescription="退出"
+                android:contentDescription="@string/search_exit"
                 android:focusable="true"
                 android:orientation="vertical"
                 android:paddingBottom="7dp">
@@ -228,7 +230,7 @@
                     android:layout_height="0dp"
                     android:layout_weight="1"
                     android:adjustViewBounds="true"
-                    android:contentDescription="退出"
+                    android:contentDescription="@string/search_exit"
                     android:maxHeight="20dp"
                     android:src="@drawable/ic_auto_page_stop"
                     app:skin_tint="onSurface"
@@ -242,7 +244,7 @@
                     android:layout_gravity="center_horizontal"
                     android:layout_marginTop="3dp"
                     android:maxLines="1"
-                    android:text="退出"
+                    android:text="@string/search_exit"
                     app:skin_textColor="onSurface"
                     android:textColor="@color/primaryText"
                     android:textSize="@dimen/text_caption" />

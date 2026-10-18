@@ -65,6 +65,12 @@ class SearchMenu @JvmOverloads constructor(
     fun upSearchResultList(resultList: List<SearchResult>) {
         searchResultList.clear()
         searchResultList.addAll(resultList)
+        currentSearchResultIndex = -1
+        lastSearchResultIndex = -1
+        binding.ivSearchContentUp.isVisible = hasSearchResult
+        binding.ivSearchContentDown.isVisible = hasSearchResult
+        binding.fabLeft.isVisible = hasSearchResult
+        binding.fabRight.isVisible = hasSearchResult
         updateSearchInfo()
     }
 
@@ -113,16 +119,29 @@ class SearchMenu @JvmOverloads constructor(
     fun updateSearchInfo() {
         ReadBook.curTextChapter?.let {
             binding.tvCurrentSearchInfo.text =
-                """${context.getString(R.string.search_content_size)}: ${searchResultList.size} / 当前章节: ${it.title}"""
+                """${context.getString(R.string.search_content_size)}: ${searchResultList.size} / ${context.getString(R.string.current_chapter)}: ${it.title}"""
         }
     }
 
     fun updateSearchResultIndex(updateIndex: Int) {
+        if (!hasSearchResult) {
+            lastSearchResultIndex = -1
+            currentSearchResultIndex = -1
+            return
+        }
         lastSearchResultIndex = currentSearchResultIndex
         currentSearchResultIndex = when {
             updateIndex < 0 -> 0
             updateIndex >= searchResultList.size -> searchResultList.size - 1
             else -> updateIndex
+        }
+    }
+
+    private fun navigateSearchResult(delta: Int) {
+        if (!hasSearchResult) return
+        updateSearchResultIndex(currentSearchResultIndex + delta)
+        searchResultList.getOrNull(currentSearchResultIndex)?.let {
+            callBack.navigateToSearch(it, currentSearchResultIndex)
         }
     }
 
@@ -150,37 +169,10 @@ class SearchMenu @JvmOverloads constructor(
             }
         }
 
-        fabLeft.setOnClickListener {
-            updateSearchResultIndex(currentSearchResultIndex - 1)
-            callBack.navigateToSearch(
-                searchResultList[currentSearchResultIndex],
-                currentSearchResultIndex
-            )
-        }
-
-        ivSearchContentUp.setOnClickListener {
-            updateSearchResultIndex(currentSearchResultIndex - 1)
-            callBack.navigateToSearch(
-                searchResultList[currentSearchResultIndex],
-                currentSearchResultIndex
-            )
-        }
-
-        ivSearchContentDown.setOnClickListener {
-            updateSearchResultIndex(currentSearchResultIndex + 1)
-            callBack.navigateToSearch(
-                searchResultList[currentSearchResultIndex],
-                currentSearchResultIndex
-            )
-        }
-
-        fabRight.setOnClickListener {
-            updateSearchResultIndex(currentSearchResultIndex + 1)
-            callBack.navigateToSearch(
-                searchResultList[currentSearchResultIndex],
-                currentSearchResultIndex
-            )
-        }
+        fabLeft.setOnClickListener { navigateSearchResult(-1) }
+        ivSearchContentUp.setOnClickListener { navigateSearchResult(-1) }
+        ivSearchContentDown.setOnClickListener { navigateSearchResult(1) }
+        fabRight.setOnClickListener { navigateSearchResult(1) }
     }
 
     private fun initAnimation() {

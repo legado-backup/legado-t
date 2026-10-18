@@ -56,7 +56,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:indeterminate="true"
-                app:indicatorColor="@color/white"
+                app:indicatorColor="@color/accent"
                 app:indicatorSize="36dp"
                 app:trackCornerRadius="99dp"
                 app:trackThickness="3dp" />
@@ -92,7 +92,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_margin="16dp"
-                android:text="重新加载"
+                android:text="@string/reload"
                 tools:visibility="visible" />
         </LinearLayout>
 

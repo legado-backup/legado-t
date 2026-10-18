@@ -4,7 +4,7 @@
 
     <style name="AppTheme.PopupOverlay" parent="ThemeOverlay.Material3.Dark">
         <item name="overlapAnchor">false</item>
-        <item name="colorAccent">@color/md_grey_100</item>
+        <item name="colorAccent">@color/m3_primary</item>
     </style>
 
     <style name="Style.Shadow.Top" parent="android:Widget">

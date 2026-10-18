@@ -274,6 +274,8 @@
     <string name="un_download">還剩 %d 章未下載</string>
     <string name="long_click_input_color">長按輸入顏色值</string>
     <string name="loading">加載中…</string>
+    <string name="reload">重新加載</string>
+    <string name="main_content">主要內容</string>
     <string name="group_zg">追更區</string>
     <string name="group_yf">養肥區</string>
     <string name="bookmark">書籤</string>
@@ -935,6 +937,11 @@
     <string name="use_browser_open">是否使用外部瀏覽器打開?</string>
     <string name="see">查看</string>
     <string name="search_content_size">搜索結果</string>
+    <string name="search_previous_result">上一個結果</string>
+    <string name="search_next_result">下一個結果</string>
+    <string name="search_results">結果</string>
+    <string name="search_exit">退出搜尋</string>
+    <string name="current_chapter">目前章節</string>
     <string name="search_content_empty">搜索内容为空，检查净化/简繁设置</string>
     <string name="open">打開</string>
     <string name="del_login_header">刪除登錄頭</string>
