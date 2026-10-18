@@ -18,6 +18,19 @@ class AudioPlayLayoutTest {
     }
 
     @Test
+    fun `audio speed menu offers presets and speed buttons have distinct descriptions`() {
+        val menuXml = readProjectFile("src/main/res/menu/audio_play.xml")
+        val activityKt = readProjectFile("src/main/java/io/legado/app/ui/book/audio/AudioPlayActivity.kt")
+
+        assertTrue(menuXml.contains("@+id/menu_audio_speed"))
+        assertTrue(menuXml.contains("@string/audio_play_speed"))
+        assertTrue(activityKt.contains("AudioPlaySpeed.presets"))
+        assertTrue(activityKt.contains("presets.getOrNull(index)?.let(AudioPlay::setSpeed)"))
+        assertTrue(activityKt.contains("R.string.fast_forward"))
+        assertTrue(activityKt.contains("R.string.fast_rewind"))
+    }
+
+    @Test
     fun `play and pause vector resources match their names`() {
         val playXml = readProjectFile("src/main/res/drawable/ic_play_24dp.xml")
         val pauseXml = readProjectFile("src/main/res/drawable/ic_pause_24dp.xml")

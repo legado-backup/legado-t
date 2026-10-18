@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.text.InputType
 import android.view.View
 import android.view.ViewGroup
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.setPadding
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
@@ -32,7 +33,6 @@ import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import kotlinx.coroutines.Dispatchers.IO
-import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
@@ -89,9 +89,11 @@ class SourceLoginDialog : BaseDialogFragment(R.layout.dialog_login, true) {
                 }
 
                 R.id.menu_del_login_header -> source.removeLoginHeader()
-                R.id.menu_clear_login_info -> lifecycleScope.launch(IO) {
-                    source.removeLoginInfo()
-                    source.removeLoginHeader()
+                R.id.menu_clear_login_info -> viewLifecycleOwner.lifecycleScope.launch {
+                    withContext(IO) {
+                        source.removeLoginInfo()
+                        source.removeLoginHeader()
+                    }
                     context?.toastOnUi(R.string.success)
                 }
 
@@ -103,37 +105,45 @@ class SourceLoginDialog : BaseDialogFragment(R.layout.dialog_login, true) {
     }
 
     override fun onDestroyView() {
-        super.onDestroyView()
+        renderJob?.cancel()
+        renderJob = null
+        currentLoginUi = null
         v2Delegate?.destroy()
         v2Delegate = null
+        super.onDestroyView()
     }
 
     private fun handleButtonClick(source: BaseSource, rowUi: RowUi, loginUi: List<RowUi>) {
-        lifecycleScope.launch(IO) {
+        // 表单与页面引用在 Main 捕获，JS/网络放到 IO，不能在脚本绑定中读取 EditText。
+        val loginData = getLoginData(loginUi)
+        val book = viewModel.book
+        val chapter = viewModel.chapter
+        val java = SourceCallbackJsExtensions(activity as? AppCompatActivity, source)
+        viewLifecycleOwner.lifecycleScope.launch {
             if (rowUi.action.isAbsUrl()) {
                 context?.openUrl(rowUi.action!!)
             } else if (rowUi.action != null) {
-                // JavaScript
                 val buttonFunctionJS = rowUi.action!!
                 val loginJS = source.getLoginJs() ?: return@launch
-                kotlin.runCatching {
-                    runScriptWithContext {
-                        source.evalJS("$loginJS\n$buttonFunctionJS") {
-                            put("result", getLoginData(loginUi))
-                            put("book", viewModel.book)
-                            put("chapter", viewModel.chapter)
+                withContext(IO) {
+                    kotlin.runCatching {
+                        runScriptWithContext {
+                            source.evalJS("$loginJS\n$buttonFunctionJS") {
+                                put("result", loginData)
+                                put("book", book)
+                                put("chapter", chapter)
+                                put("java", java)
+                            }
                         }
+                    }.onFailure { e ->
+                        ensureActive()
+                        AppLog.put("LoginUI Button ${rowUi.name} JavaScript error", e)
                     }
-                }.onFailure { e ->
-                    ensureActive()
-                    AppLog.put("LoginUI Button ${rowUi.name} JavaScript error", e)
                 }
             }
             ensureActive()
-            withContext(Main) {
-                val preserveInput = getLoginData(currentLoginUi)
-                renderLoginUi(source, preserveInput)
-            }
+            val preserveInput = getLoginData(currentLoginUi)
+            renderLoginUi(source, preserveInput)
         }
     }
 
@@ -142,14 +152,17 @@ class SourceLoginDialog : BaseDialogFragment(R.layout.dialog_login, true) {
         // 必须离开主线程求值,否则窗口显示前主线程就被拖死——用户看到的是"点了没反应"。
         // runScriptWithContext 挂上当前 Job:进 RhinoContext(安全策略放行)且弹窗关闭时可中断脚本。
         renderJob?.cancel()
-        renderJob = lifecycleScope.launch {
+        val book = viewModel.book
+        val chapter = viewModel.chapter
+        val java = SourceCallbackJsExtensions(activity as? AppCompatActivity, source)
+        renderJob = viewLifecycleOwner.lifecycleScope.launch {
             binding.rotateLoading.visible()
             val result = withContext(IO) {
                 kotlin.runCatching {
                     runScriptWithContext {
                         // 首次渲染 prefills 传 null:已存登录信息也在 IO 线程读取解密
                         (prefills ?: source.getLoginInfoMap()) to
-                            source.loginUi(viewModel.book, viewModel.chapter)
+                            source.loginUiWithJava(book, chapter, java)
                     }
                 }.onFailure { e ->
                     ensureActive()
@@ -240,26 +253,33 @@ class SourceLoginDialog : BaseDialogFragment(R.layout.dialog_login, true) {
     }
 
     private fun login(source: BaseSource, loginData: HashMap<String, String>) {
-        lifecycleScope.launch(IO) {
+        val book = viewModel.book
+        val chapter = viewModel.chapter
+        val java = SourceCallbackJsExtensions(activity as? AppCompatActivity, source)
+        viewLifecycleOwner.lifecycleScope.launch {
             if (loginData.isEmpty()) {
-                source.removeLoginInfo()
-                withContext(Main) {
-                    dismiss()
-                }
-            } else if (source.putLoginInfo(GSON.toJson(loginData))) {
-                try {
-                    runScriptWithContext {
-                        source.login(viewModel.book, viewModel.chapter)
+                withContext(IO) { source.removeLoginInfo() }
+                dismissAllowingStateLoss()
+                return@launch
+            }
+            try {
+                val saved = withContext(IO) {
+                    if (!source.putLoginInfo(GSON.toJson(loginData))) {
+                        false
+                    } else {
+                        runScriptWithContext { source.loginWithJava(book, chapter, java) }
+                        true
                     }
+                }
+                if (saved) {
                     context?.toastOnUi(R.string.success)
-                    withContext(Main) {
-                        dismiss()
-                    }
-                } catch (e: Exception) {
-                    AppLog.put("登录出错\n${e.localizedMessage}", e)
-                    context?.toastOnUi("登录出错\n${e.localizedMessage}")
-                    e.printOnDebug()
+                    dismissAllowingStateLoss()
                 }
+            } catch (e: Exception) {
+                ensureActive()
+                AppLog.put("登录出错\n${e.localizedMessage}", e)
+                context?.toastOnUi("登录出错\n${e.localizedMessage}")
+                e.printOnDebug()
             }
         }
     }

@@ -11,7 +11,7 @@ import io.legado.app.databinding.ItemBookshelfGridBinding
 import io.legado.app.databinding.ItemBookshelfGridGroupBinding
 import io.legado.app.databinding.ItemBookshelfListBinding
 import io.legado.app.databinding.ItemBookshelfListGroupBinding
-import io.legado.app.lib.theme.cardBackgroundColor
+import io.legado.app.lib.theme.coverCardBackgroundColor
 import io.legado.app.ui.main.bookshelf.bindBook
 import splitties.views.onLongClick
 
@@ -134,8 +134,8 @@ class BooksAdapter(
         RecyclerView.ViewHolder(binding.root) {
 
         fun onBind(item: BookGroup, payloads: MutableList<Any>) = binding.run {
+            coverCard.setCardBackgroundColor(context.coverCardBackgroundColor)
             if (payloads.isEmpty()) {
-                coverCard.setCardBackgroundColor(context.cardBackgroundColor)
                 tvName.text = item.groupName
                 ivCover.load(item.cover)
             } else {

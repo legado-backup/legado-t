@@ -63,6 +63,7 @@ object McpToolServer {
         server.registerBookSourceTools()
         server.registerTaskTools()
         server.registerTtsTools()
+        server.registerExploreTools()
         registerResources(server)
         return server
     }

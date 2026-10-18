@@ -5,6 +5,7 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import io.legado.app.data.entities.ExploreContainer
 import io.legado.app.help.source.ExploreContainerHelp
@@ -51,6 +52,17 @@ interface ExploreContainerDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insert(vararg container: ExploreContainer): List<Long>
+
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    fun insertNew(vararg container: ExploreContainer): List<Long>
+
+    /** 校验在工具层完成;排序分配、整批写入、Room 自增 ID 均在同一事务中完成。 */
+    @Transaction
+    fun appendNew(containers: List<ExploreContainer>): List<ExploreContainer> {
+        val rows = McpExploreInsertPolicy.newRows(containers, maxOrder)
+        val ids = insertNew(*rows.toTypedArray())
+        return rows.mapIndexed { index, row -> row.copy(id = ids[index]) }
+    }
 
     @Update
     fun update(vararg container: ExploreContainer)

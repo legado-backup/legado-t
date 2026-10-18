@@ -1,6 +1,8 @@
 package io.legado.app.model
 
+import io.legado.app.constant.AppConst
 import io.legado.app.constant.AppLog
+import io.legado.app.constant.androidId
 import io.legado.app.constant.EventBus
 import io.legado.app.constant.PageAnim.scrollPageAnim
 import io.legado.app.constant.PreferKey
@@ -11,7 +13,6 @@ import io.legado.app.data.entities.BookHighlight
 import io.legado.app.data.entities.BookProgress
 import io.legado.app.data.entities.BookSource
 import io.legado.app.data.entities.HighlightRule
-import io.legado.app.data.entities.ReadRecord
 import io.legado.app.help.AppWebDav
 import io.legado.app.help.HighlightAnchor
 import io.legado.app.help.HighlightRuleMatcher
@@ -72,7 +73,20 @@ import io.legado.app.data.entities.getUseReplaceRule
 
 @Suppress("MemberVisibilityCanBePrivate")
 object ReadBook : CoroutineScope by MainScope() {
+    private val readRecordSession = ReadRecordSession(
+        deviceId = { AppConst.androidId },
+        enabled = { AppConfig.enableReadRecord },
+        save = { snapshot, elapsed ->
+            globalExecutor.execute { appDb.readRecordDao.addTime(snapshot, elapsed) }
+        },
+    )
     var book: Book? = null
+        set(value) {
+            if (field === value) return
+            readRecordSession.setBook(value)
+            field = value
+            readRecordSession.refreshMetadata()
+        }
     var callBack: CallBack? = null
     var highlights: List<BookHighlight> = emptyList()
         private set
@@ -89,12 +103,10 @@ object ReadBook : CoroutineScope by MainScope() {
     var bookSource: BookSource? = null
     var msg: String? = null
     private val loadingChapters = arrayListOf<Int>()
-    private val readRecord = ReadRecord()
     private val chapterLoadingJobs = ConcurrentHashMap<Int, Coroutine<*>>()
     private val prevChapterLoadingLock = Mutex()
     private val curChapterLoadingLock = Mutex()
     private val nextChapterLoadingLock = Mutex()
-    var readStartTime: Long = System.currentTimeMillis()
 
     /* 跳转进度前进度记录 */
     var lastBookProgress: BookProgress? = null
@@ -115,8 +127,6 @@ object ReadBook : CoroutineScope by MainScope() {
         ReadBook.book = book
         loadHighlights(book)
         loadHighlightRules(book)
-        readRecord.bookName = book.name
-        readRecord.readTime = appDb.readRecordDao.getReadTime(book.name) ?: 0
         chapterSize = appDb.bookChapterDao.getChapterCount(book.bookUrl)
         simulatedChapterSize = if (book.readSimulating()) {
             book.simulatedTotalChapterNum()
@@ -428,17 +438,14 @@ object ReadBook : CoroutineScope by MainScope() {
         }
     }
 
-    fun upReadTime() {
-        executor.execute {
-            if (!AppConfig.enableReadRecord) {
-                return@execute
-            }
-            readRecord.readTime = readRecord.readTime + System.currentTimeMillis() - readStartTime
-            readStartTime = System.currentTimeMillis()
-            readRecord.lastRead = System.currentTimeMillis()
-            appDb.readRecordDao.insert(readRecord)
-        }
-    }
+    fun upReadTime() = readRecordSession.checkpoint()
+
+    fun setReadRecordActive(reason: String, active: Boolean) =
+        readRecordSession.setActive(reason, active)
+
+    fun refreshReadRecord() = readRecordSession.refreshMetadata()
+
+    internal fun setReadRecordEnabled(enabled: Boolean) = readRecordSession.setEnabled(enabled)
 
     fun upMsg(msg: String?) {
         if (ReadBook.msg != msg) {

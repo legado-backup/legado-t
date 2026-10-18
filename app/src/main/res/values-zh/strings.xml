@@ -287,6 +287,7 @@ Cron 使用 5 个字段：**分 时 日 月 周**
     <string name="audio_play">播放</string>
     <string name="audio_play_t">正在播放</string>
     <string name="audio_play_s">点击打开播放界面</string>
+    <string name="audio_play_speed">播放速度</string>
     <string name="audio_pause">播放暂停</string>
     <string name="text_return">返回</string>
     <string name="refresh">刷新</string>

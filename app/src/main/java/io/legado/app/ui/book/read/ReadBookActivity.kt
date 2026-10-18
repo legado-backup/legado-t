@@ -469,7 +469,7 @@ class ReadBookActivity : BaseReadBookActivity(),
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
     override fun onResume() {
         super.onResume()
-        ReadBook.readStartTime = System.currentTimeMillis()
+        ReadBook.setReadRecordActive("page", true)
         if (bookChanged) {
             bookChanged = false
             ReadBook.callBack = this
@@ -499,6 +499,7 @@ class ReadBookActivity : BaseReadBookActivity(),
 
     override fun onPause() {
         super.onPause()
+        ReadBook.setReadRecordActive("page", false)
         autoPageStop()
         backupJob?.cancel()
         ReadBook.saveRead()

@@ -289,6 +289,7 @@ Placeholders:
     <string name="audio_play">Play</string>
     <string name="audio_play_t">Playing</string>
     <string name="audio_play_s">Click to open the Playing</string>
+    <string name="audio_play_speed">Playback speed</string>
     <string name="audio_pause">Pause</string>
     <string name="text_return">Back</string>
     <string name="refresh">Refresh</string>
@@ -1636,6 +1637,8 @@ Placeholders:
     <string name="review_icon_add">Add icon</string>
     <string name="review_icon_default_name">Icon %1$d</string>
     <!-- 发现容器 -->
+    <string name="legacy_explore_title">使用旧版发现页</string>
+    <string name="legacy_explore_summary">按书源展开并选择发现分类</string>
     <string name="explore_container_manage">发现容器管理</string>
     <string name="explore_container_add">添加容器</string>
     <string name="explore_container_edit">编辑容器</string>

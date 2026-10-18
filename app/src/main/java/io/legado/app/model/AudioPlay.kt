@@ -4,15 +4,16 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import io.legado.app.R
+import io.legado.app.constant.AppConst
 import io.legado.app.constant.AppLog
 import io.legado.app.constant.EventBus
+import io.legado.app.constant.androidId
 import io.legado.app.constant.IntentAction
 import io.legado.app.constant.Status
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
 import io.legado.app.data.entities.BookSource
-import io.legado.app.data.entities.ReadRecord
 import io.legado.app.help.book.ContentProcessor
 import io.legado.app.help.book.getBookSource
 import io.legado.app.help.book.readSimulating
@@ -32,6 +33,34 @@ import kotlinx.coroutines.cancelChildren
 import splitties.init.appCtx
 import io.legado.app.data.entities.getDisplayTitle
 import io.legado.app.data.entities.getUseReplaceRule
+import java.util.Locale
+
+internal object AudioPlaySpeed {
+    const val MIN = 0.5f
+    const val MAX = 3f
+    val presets = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f, 3f)
+
+    fun clamp(speed: Float): Float {
+        return if (speed.isFinite()) speed.coerceIn(MIN, MAX) else 1f
+    }
+
+    fun adjust(speed: Float, adjustment: Float): Float {
+        return clamp(speed + adjustment)
+    }
+
+    fun format(speed: Float): String {
+        return String.format(Locale.ROOT, "%.2f", clamp(speed))
+            .trimEnd('0')
+            .trimEnd('.')
+    }
+
+    fun presetIndex(speed: Float): Int {
+        val normalizedSpeed = clamp(speed)
+        return presets.indices.minByOrNull { index ->
+            kotlin.math.abs(presets[index] - normalizedSpeed)
+        } ?: 0
+    }
+}
 
 @SuppressLint("StaticFieldLeak")
 @Suppress("unused")
@@ -66,7 +95,20 @@ object AudioPlay : CoroutineScope by MainScope() {
     private var serviceContext: Context? = null
     private val context: Context get() = activityContext ?: serviceContext ?: appCtx
     var callback: CallBack? = null
+    private val readRecordSession = ReadRecordSession(
+        deviceId = { AppConst.androidId },
+        enabled = { AppConfig.enableReadRecord },
+        save = { snapshot, elapsed ->
+            globalExecutor.execute { appDb.readRecordDao.addTime(snapshot, elapsed) }
+        },
+    )
     var book: Book? = null
+        set(value) {
+            if (field === value) return
+            readRecordSession.setBook(value)
+            field = value
+            readRecordSession.refreshMetadata()
+        }
     var chapterSize = 0
     var simulatedChapterSize = 0
     var durChapterIndex = 0
@@ -83,9 +125,6 @@ object AudioPlay : CoroutineScope by MainScope() {
     private val preloadingPlayUrlKeys = hashSetOf<String>()
     private val invalidatedPreloadKeys = hashSetOf<String>()
     private var preloadSessionId = 0L
-    private var readRecord = ReadRecord()
-    /** 听书走时起点;null=未在走时 */
-    private var readStartTime: Long? = null
 
     fun changePlayMode() {
         playMode = playMode.next()
@@ -98,32 +137,19 @@ object AudioPlay : CoroutineScope by MainScope() {
 
     fun savePlaySpeed(speed: Float) {
         val book = book ?: return
-        book.setAudioPlaySpeed(speed)
+        book.setAudioPlaySpeed(AudioPlaySpeed.clamp(speed))
         Coroutine.async { book.update() }
     }
 
     /** 开始走时;重复调用无副作用 */
-    fun markReadTimeStart() {
-        if (readStartTime == null) {
-            readStartTime = System.currentTimeMillis()
-        }
-    }
+    fun markReadTimeStart() = readRecordSession.setActive("audio", true)
 
     /** 结算听书时长入阅读记录;未在走时调用无副作用 */
-    fun upReadTime() {
-        val start = readStartTime ?: return
-        readStartTime = null
-        if (!AppConfig.enableReadRecord) {
-            return
-        }
-        val record = readRecord
-        val elapsed = System.currentTimeMillis() - start
-        globalExecutor.execute {
-            record.readTime += elapsed
-            record.lastRead = System.currentTimeMillis()
-            appDb.readRecordDao.insert(record)
-        }
-    }
+    fun upReadTime() = readRecordSession.setActive("audio", false)
+
+    fun refreshReadRecord() = readRecordSession.refreshMetadata()
+
+    internal fun setReadRecordEnabled(enabled: Boolean) = readRecordSession.setEnabled(enabled)
 
     fun upData(book: Book) {
         val oldBookUrl = AudioPlay.book?.bookUrl
@@ -151,10 +177,6 @@ object AudioPlay : CoroutineScope by MainScope() {
         stop()
         upReadTime()
         AudioPlay.book = book
-        readRecord = ReadRecord(
-            bookName = book.name,
-            readTime = appDb.readRecordDao.getReadTime(book.name) ?: 0
-        )
         chapterSize = appDb.bookChapterDao.getChapterCount(book.bookUrl)
         simulatedChapterSize = if (book.readSimulating()) {
             book.simulatedTotalChapterNum()
@@ -167,7 +189,12 @@ object AudioPlay : CoroutineScope by MainScope() {
         playMode = book.getAudioPlayMode()?.let { PlayMode.entries.getOrNull(it) }
             ?: PlayMode.LIST_END_STOP
         postEvent(EventBus.PLAY_MODE_CHANGED, playMode)
-        postEvent(EventBus.AUDIO_SPEED, book.getAudioPlaySpeed())
+        val playSpeed = AudioPlaySpeed.clamp(book.getAudioPlaySpeed())
+        if (playSpeed != book.getAudioPlaySpeed()) {
+            book.setAudioPlaySpeed(playSpeed)
+            Coroutine.async { book.update() }
+        }
+        postEvent(EventBus.AUDIO_SPEED, playSpeed)
         durPlayUrl = ""
         durAudioSize = 0
         upDurChapter()
@@ -457,6 +484,19 @@ object AudioPlay : CoroutineScope by MainScope() {
                 action = IntentAction.adjustSpeed
                 putExtra("adjust", adjust)
             }
+        }
+    }
+
+    fun setSpeed(speed: Float) {
+        val normalizedSpeed = AudioPlaySpeed.clamp(speed)
+        if (AudioPlayService.isRun) {
+            context.startService<AudioPlayService> {
+                action = IntentAction.adjustSpeed
+                putExtra("speed", normalizedSpeed)
+            }
+        } else {
+            savePlaySpeed(normalizedSpeed)
+            postEvent(EventBus.AUDIO_SPEED, normalizedSpeed)
         }
     }
 

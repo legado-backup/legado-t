@@ -54,6 +54,7 @@ class AudioPlayViewModel(application: Application) : BaseViewModel(application) 
         if (AudioPlay.chapterSize == 0 && !loadChapterList(book)) {
             return
         }
+        AudioPlay.refreshReadRecord()
     }
 
     private suspend fun loadBookInfo(book: Book): Boolean {
@@ -102,10 +103,10 @@ class AudioPlayViewModel(application: Application) : BaseViewModel(application) 
             book.removeType(BookType.updateError)
             AudioPlay.book?.delete()
             appDb.bookDao.insert(book)
-            AudioPlay.book = book
             AudioPlay.setBookSource(source)
             appDb.bookChapterDao.insert(*toc.toTypedArray())
-            AudioPlay.upDurChapter()
+            AudioPlay.upData(book)
+            AudioPlay.refreshReadRecord()
         }.onFinally {
             customBtnData.postValue(source.customButton)
             postEvent(EventBus.SOURCE_CHANGED, book.bookUrl)
