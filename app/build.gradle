@@ -129,7 +129,11 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
     packaging {
-        resources.excludes.add('META-INF/*')
+        resources.excludes.addAll([
+                'META-INF/*',
+                'org/fusesource/jansi/**',
+                'org/bouncycastle/pqc/**'
+        ])
     }
 
     splits {
