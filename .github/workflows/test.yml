@@ -376,7 +376,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           CANDIDATE_TAG: beta-candidate-${{ github.run_id }}-${{ github.run_attempt }}
-          BACKUP_TAG: beta-backup-${{ github.run_id }}-${{ github.run_attempt }}
         run: |
           old_beta_commit=$(git rev-parse 'refs/tags/beta^{commit}' 2>/dev/null || echo '')
           old_beta_release_id=$(gh release view beta --json databaseId --jq '.databaseId' 2>/dev/null || echo '')
@@ -386,7 +385,6 @@ jobs:
             exit 1
           fi
 
-          old_release_rename_attempted=false
           beta_tag_update_attempted=false
           candidate_publish_attempted=false
           promotion_complete=false
@@ -406,25 +404,17 @@ jobs:
                   git push origin --delete beta 2>/dev/null || true
                 fi
               fi
-              if [ "$old_release_rename_attempted" = true ]; then
-                gh api --method PATCH \
-                  "/repos/$GITHUB_REPOSITORY/releases/$old_beta_release_id" \
-                  -f tag_name=beta || true
-              fi
             fi
             return "$status"
           }
           trap rollback_promotion EXIT
 
-          if [ -n "$old_beta_commit" ]; then
-            git tag "$BACKUP_TAG" "$old_beta_commit"
-            git push origin "refs/tags/$BACKUP_TAG"
-          fi
+          # GitHub does not allow an already-published release to be renamed to
+          # a backup tag. Delete the old beta only after candidate verification.
           if [ -n "$old_beta_release_id" ]; then
-            old_release_rename_attempted=true
-            gh api --method PATCH \
-              "/repos/$GITHUB_REPOSITORY/releases/$old_beta_release_id" \
-              -f "tag_name=$BACKUP_TAG"
+            gh release delete beta --yes --cleanup-tag
+          elif [ -n "$old_beta_commit" ]; then
+            git push origin --delete beta
           fi
 
           beta_tag_update_attempted=true
@@ -441,13 +431,8 @@ jobs:
 
           promotion_complete=true
           trap - EXIT
-          if [ -n "$old_beta_release_id" ]; then
-            gh release delete "$BACKUP_TAG" --yes --cleanup-tag || echo "Warning: backup beta release remains at $BACKUP_TAG"
-          elif [ -n "$old_beta_commit" ]; then
-            git push origin --delete "$BACKUP_TAG" || echo "Warning: backup beta tag remains at $BACKUP_TAG"
-          fi
           git push origin --delete "$CANDIDATE_TAG" || echo "Warning: candidate tag remains at $CANDIDATE_TAG"
-          git tag -d "$BACKUP_TAG" "$CANDIDATE_TAG" 2>/dev/null || true
+          git tag -d "$CANDIDATE_TAG" 2>/dev/null || true
 
   lanzou:
     needs: [ prepare, build, test ]
