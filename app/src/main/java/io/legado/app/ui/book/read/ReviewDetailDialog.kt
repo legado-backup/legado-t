@@ -1391,7 +1391,7 @@ class ReviewDetailDialog() : BaseDialogFragment(R.layout.dialog_recycler_view) {
             ReviewResult(
                 items = sourceResult?.items.orEmpty() + nostrResult?.items.orEmpty(),
                 nextPageUrl = when {
-                    sourceHasMore -> sourceResult?.nextPageUrl
+                    sourceHasMore -> sourceResult.nextPageUrl
                     nostrHasMore -> NOSTR_MORE_PAGE
                     else -> null
                 },
@@ -2372,7 +2372,7 @@ class ReviewDetailDialog() : BaseDialogFragment(R.layout.dialog_recycler_view) {
                             postEvent(EventBus.REFRESH_REVIEW_SUMMARY_ONLY, paragraphNum.toString())
                             runOnUiIfAlive {
                                 setPendingState(localId, PENDING_FAILED)
-                                context?.longToastOnUi(
+                                context.longToastOnUi(
                                     cause.localizedMessage ?: getString(R.string.nostr_comment_failed)
                                 )
                             }
@@ -2397,7 +2397,7 @@ class ReviewDetailDialog() : BaseDialogFragment(R.layout.dialog_recycler_view) {
                 }.onFailure {
                     // 远端同步失败：回滚本地点赞态与计数
                     applyLikeState(commentId, liked = false)
-                    context?.toastOnUi(it.localizedMessage ?: getString(R.string.nostr_comment_failed))
+                    context.toastOnUi(it.localizedMessage ?: getString(R.string.nostr_comment_failed))
                 }
             }
         }
@@ -2412,7 +2412,7 @@ class ReviewDetailDialog() : BaseDialogFragment(R.layout.dialog_recycler_view) {
                 }.onFailure { if (it is CancellationException) throw it }
                 result.onFailure {
                     applyLikeState(commentId, liked = true, reactionId = reactionId)
-                    context?.toastOnUi(it.localizedMessage ?: getString(R.string.nostr_comment_failed))
+                    context.toastOnUi(it.localizedMessage ?: getString(R.string.nostr_comment_failed))
                 }
             }
         }

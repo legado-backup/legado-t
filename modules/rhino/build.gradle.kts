@@ -8,6 +8,8 @@ kotlin {
         namespace = "com.script"
         compileSdk = 37
         minSdk = 26
+        withHostTest {
+        }
     }
 
     jvmToolchain(17)

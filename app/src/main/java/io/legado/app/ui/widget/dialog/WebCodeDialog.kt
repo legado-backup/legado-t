@@ -101,6 +101,7 @@ class WebCodeDialog() : BaseDialogFragment(R.layout.dialog_web_code_view),
                 // 透明导航栏时华为等 ROM 会叠系统对比度灰罩,关闭之
                 isNavigationBarContrastEnforced = false
             }
+            @Suppress("DEPRECATION")
             setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
             WindowInsetsControllerCompat(this, decorView).run {
                 isAppearanceLightStatusBars = ColorUtils.isColorLight(primaryColor)

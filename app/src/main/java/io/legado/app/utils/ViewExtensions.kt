@@ -66,6 +66,7 @@ fun View.hideSoftInput() = run {
     inputMethodManager.hideSoftInputFromWindow(this.windowToken, 0)
 }
 
+@Suppress("DEPRECATION")
 fun EditText.showSoftInput() = run {
     requestFocus()
     inputMethodManager.showSoftInput(this, InputMethodManager.SHOW_IMPLICIT)

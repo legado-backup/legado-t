@@ -2201,7 +2201,7 @@ class ReadBookActivity : BaseReadBookActivity(),
             synchronized(reviewSummaryPrefetchingKeys) {
                 reviewSummaryPrefetchingKeys.remove(key)
             }
-            if (summary == null || !AppConfig.nostrReviewEnabled) return@onSuccess
+            if (!AppConfig.nostrReviewEnabled) return@onSuccess
             // 中继不可用（如断网）不写缓存，避免把空段占位当成下一章统计落盘。
             if (summary.relayFailed) return@onSuccess
             val result = ReviewSummaryResult(summary.counts, emptyMap())

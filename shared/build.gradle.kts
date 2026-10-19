@@ -10,6 +10,8 @@ kotlin {
         namespace = "io.legado.shared"
         compileSdk = 37
         minSdk = 26
+        withHostTest {
+        }
     }
 
     jvmToolchain(17)
