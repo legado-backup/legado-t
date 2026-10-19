@@ -133,6 +133,21 @@ class SourceLoginBridgeTest {
     }
 
     @Test
+    fun loginUiV2JavaFacadeExposesSourceKeyValueStorage() {
+        val source = SourceProbe()
+        val java = SourceCallbackJsExtensions(null, source)
+        val bindings = ScriptBindings().apply { put("java", java) }
+
+        val result = RhinoScriptEngine.eval(
+            "java.put('stv_balance', JSON.stringify({balance: 12})); java.get('stv_balance')",
+            bindings,
+        )
+
+        assertEquals("{\"balance\":12}", result)
+        assertEquals("{\"balance\":12}", source.get("stv_balance"))
+    }
+
+    @Test
     fun v1ActionAndFinalLoginSeeThePageJavaFacade() {
         val source = SourceProbe()
         val java = SourceCallbackJsExtensions(null, source)
@@ -175,6 +190,7 @@ class SourceLoginBridgeTest {
         val pageCmd = source.evalLoginActionV2WithJava("submit", "{}", """{"value":"reader"}""", java = java)
         assertEquals("function", actionState(pageCmd, "binding"))
         assertEquals("reader", actionState(pageCmd, "value"))
+        assertEquals("reader", source.get("login_v2_value"))
         val oldCmd = source.evalLoginActionV2("submit", "{}", "{}")
         assertEquals("source", actionState(oldCmd, "binding"))
     }
@@ -209,7 +225,8 @@ class SourceLoginBridgeTest {
             function binding() { return java === source ? 'source' : typeof java.open; }
             function loginUi(state) { return {rows:[{name:binding(), type:'label'}]}; }
             function loginAction(action, state, form) {
-                return {state:{binding:binding(), value:form.value || ''}};
+                java.put('login_v2_value', form.value || '');
+                return {state:{binding:binding(), value:java.get('login_v2_value')}};
             }
         """.trimIndent()
     }

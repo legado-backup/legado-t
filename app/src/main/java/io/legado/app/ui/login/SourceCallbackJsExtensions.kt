@@ -84,6 +84,11 @@ class SourceCallbackJsExtensions(
     // 脚本及其异步 open 任务必须强持有源；Activity 则不应被 facade 延长生命周期。
     override fun getSource(): BaseSource? = source
 
+    /** Login UI V2 的 java facade 也保留源变量存取能力。 */
+    fun put(key: String, value: String): String = source?.put(key, value) ?: value
+
+    fun get(key: String): String = source?.get(key).orEmpty()
+
     private fun AppCompatActivity.canUseUi(): Boolean = canUseSourceCallbackUi(
         lifecycle.currentState,
         isFinishing,
