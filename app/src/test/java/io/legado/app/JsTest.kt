@@ -77,6 +77,54 @@ class JsTest {
     }
 
     @Test
+    fun analyzeRuleJavaDelegateKeepsMigratedMethodSurface() {
+        val previousFactory = io.legado.app.model.analyzeRule.AnalyzeRule.javaDelegateFactory
+        try {
+            io.legado.app.model.analyzeRule.AnalyzeRule.javaDelegateFactory = {
+                io.legado.app.model.analyzeRule.AnalyzeRuleAndroidDelegate(it)
+            }
+            val rule = io.legado.app.model.analyzeRule.AnalyzeRule()
+            val names = listOf(
+                "ajax", "ajaxAll", "connect", "get", "put", "setContent", "setBaseUrl",
+                "setRedirectUrl", "setLocal", "evalJS", "getString", "getStringList",
+                "getElement", "getElements", "splitSourceRule", "reGetBook", "refreshTocUrl",
+                "toURL", "getWebViewUA", "getCookie", "getFile", "readFile", "readTxtFile",
+                "deleteFile", "cacheFile", "importScript", "toast", "longToast", "log",
+                "startBrowser", "startBrowserAwait", "openUrl", "showBrowser", "copyText",
+                "refreshBookInfo", "refreshBookToc", "refreshContent", "singleFlight", "lock", "tick",
+            )
+            names.forEach { name ->
+                Assert.assertEquals("missing java.$name", "function", rule.evalJS("typeof java.$name"))
+            }
+        } finally {
+            io.legado.app.model.analyzeRule.AnalyzeRule.javaDelegateFactory = previousFactory
+        }
+    }
+
+    @Test
+    fun analyzeUrlJavaDelegateKeepsMigratedMethodSurface() {
+        val previousFactory = io.legado.app.model.analyzeRule.AnalyzeUrl.javaDelegateFactory
+        try {
+            io.legado.app.model.analyzeRule.AnalyzeUrl.javaDelegateFactory = {
+                io.legado.app.model.analyzeRule.AnalyzeUrlAndroidDelegate(it)
+            }
+            val analyzeUrl = io.legado.app.model.analyzeRule.AnalyzeUrl("data:text/plain,ok")
+            val names = listOf(
+                "initUrl", "evalJS", "put", "get", "getStrResponse", "getResponse",
+                "getByteArray", "getInputStream", "upload", "isPost", "getUserAgent",
+                "getGlideUrl", "getMediaItem", "getHeaderMap",
+            )
+            names.forEach { name ->
+                Assert.assertEquals("missing java.$name", "function", analyzeUrl.evalJS("typeof java.$name"))
+            }
+            Assert.assertEquals(true, analyzeUrl.evalJS("java.url != null"))
+            Assert.assertEquals(true, analyzeUrl.evalJS("java.ruleUrl != null"))
+        } finally {
+            io.legado.app.model.analyzeRule.AnalyzeUrl.javaDelegateFactory = previousFactory
+        }
+    }
+
+    @Test
     fun analyzeRuleAndAnalyzeUrlDelegatesKeepRhinoVisibleOverloads() {
         fun assertMethod(type: Class<*>, name: String, vararg parameterTypes: Class<*>) {
             Assert.assertNotNull(
