@@ -62,6 +62,8 @@
 # AnalyzeRule Android bridge classes are called by Rhino reflection, not static references.
 -keep class io.legado.app.model.analyzeRule.AnalyzeRuleAndroidDelegate { *; }
 -keep class io.legado.app.model.analyzeRule.AnalyzeUrlAndroidDelegate { *; }
+# Gson parses URL option JSON into this reflection-only DTO by field name.
+-keep class io.legado.app.model.analyzeRule.AnalyzeUrl$UrlOption { *; }
 # JsExtensions/JsEncodeUtils 迁入 shared commonMain 后无法使用 androidx @Keep, 按 FQN 等价保留
 -keep class io.legado.app.help.JsExtensions { *; }
 -keep class io.legado.app.help.JsExtensions$* { *; }

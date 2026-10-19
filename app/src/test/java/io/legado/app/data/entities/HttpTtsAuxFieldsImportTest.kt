@@ -16,7 +16,7 @@ class HttpTtsAuxFieldsImportTest {
     @Test
     fun `import reads jsLib and enabledCookieJar`() {
         val json = """
-            {"id":1,"name":"某引擎","url":"http://a.com/tts",
+            {"id":1,"name":"某引擎","url":"http://a.test/tts",
              "jsLib":"function sign(t){return java.md5Encode(t)}",
              "enabledCookieJar":true}
         """.trimIndent()
@@ -28,7 +28,7 @@ class HttpTtsAuxFieldsImportTest {
     @Test
     fun `absent fields fall back to defaults`() {
         val httpTTS = HttpTTS.fromJson(
-            """{"id":1,"name":"某引擎","url":"http://a.com/tts"}"""
+            """{"id":1,"name":"某引擎","url":"http://a.test/tts"}"""
         ).getOrThrow()
         assertNull(httpTTS.jsLib)
         assertFalse(httpTTS.enabledCookieJar == true)
@@ -39,7 +39,7 @@ class HttpTtsAuxFieldsImportTest {
         val httpTTS = HttpTTS(
             id = 7,
             name = "某引擎",
-            url = "http://a.com/tts",
+            url = "http://a.test/tts",
             jsLib = "function sign(t){return java.md5Encode(t)}",
             enabledCookieJar = true
         )

@@ -12,7 +12,7 @@ class JsSourceImportBadgeProbeTest {
 
     private fun script(configLines: String) = """
         var config = {
-          bookSourceUrl: "https://example.com",
+          bookSourceUrl: "https://example.test",
           bookSourceName: "探针源"$configLines
         }
         function search(key, page) { return [] }

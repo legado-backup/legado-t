@@ -1,0 +1,52 @@
+{
+  "kept_classes": [
+    "io.legado.app.api.ReturnData",
+    "io.legado.app.help.DirectLinkUpload$Rule",
+    "io.legado.app.help.JsExtensionsAndroid",
+    "io.legado.app.help.config.ReadBookConfig",
+    "io.legado.app.help.config.ReadBookConfig$Config",
+    "io.legado.app.help.config.ReviewIconStore",
+    "io.legado.app.help.config.ReviewIconStore$ReviewIcon",
+    "io.legado.app.help.config.ThemeConfig",
+    "io.legado.app.help.config.ThemeConfig$Config",
+    "io.legado.app.help.http.CookieStore",
+    "io.legado.app.help.update.AppUpdateGitHub",
+    "io.legado.app.help.update.GithubRelease",
+    "io.legado.app.help.update.GithubRelease$Asset",
+    "io.legado.app.help.update.UpdateManifest",
+    "io.legado.app.help.update.UpdateManifest$Artifact",
+    "io.legado.app.lib.cronet.AbsCallBack",
+    "io.legado.app.lib.cronet.BodyUploadProvider",
+    "io.legado.app.lib.cronet.CronetCoroutineInterceptor",
+    "io.legado.app.lib.cronet.CronetInterceptor",
+    "io.legado.app.lib.cronet.CronetLoader",
+    "io.legado.app.lib.cronet.LargeBodyUploadProvider",
+    "io.legado.app.lib.cronet.NewCallBack",
+    "io.legado.app.lib.cronet.OldCallback",
+    "io.legado.app.model.BookCover",
+    "io.legado.app.model.BookCover$CoverRule",
+    "io.legado.app.model.analyzeRule.QueryTTF",
+    "io.legado.app.model.remote.RemoteBook",
+    "io.legado.app.model.rss.RssParserByRule",
+    "io.legado.app.ui.book.manga.config.MangaFooterConfig",
+    "io.legado.app.ui.book.read.page.entities.TextChapter",
+    "io.legado.app.ui.book.read.page.entities.TextLine",
+    "io.legado.app.ui.book.read.page.entities.TextPage",
+    "io.legado.app.ui.book.read.page.entities.TextPos",
+    "io.legado.app.ui.book.read.page.entities.column.ButtonColumn",
+    "io.legado.app.ui.book.read.page.entities.column.ImageColumn",
+    "io.legado.app.ui.book.read.page.entities.column.ReviewColumn",
+    "io.legado.app.ui.book.read.page.entities.column.TextColumn",
+    "io.legado.app.ui.widget.dialog.BottomWebViewDialog$Config",
+    "io.legado.app.utils.JsURL"
+  ],
+  "classes": [
+    "io.legado.app.model.analyzeRule.AnalyzeUrl$UrlOption"
+  ],
+  "fields": [
+    {
+      "class": "io.legado.app.model.analyzeRule.AnalyzeUrl$UrlOption",
+      "name": "headers"
+    }
+  ]
+}

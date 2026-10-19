@@ -15,10 +15,10 @@ class JsSourceReviewTest {
     @Test
     fun parseSummaryNormal() = runBlocking {
         val source = BookSource(
-            bookSourceUrl = "https://a.com",
+            bookSourceUrl = "https://a.test",
             bookSourceName = "段评测试",
             mainJs = """
-                var config = { bookSourceUrl: "https://a.com", bookSourceName: "test" }
+                var config = { bookSourceUrl: "https://a.test", bookSourceName: "test" }
                 function search(k,p) { return [] }
                 function getChapters(b) { return [] }
                 function getContent(c,b) { return "" }
@@ -31,8 +31,8 @@ class JsSourceReviewTest {
                 function getReviewDetail(c,b,pi,pd,pg) { return {items:[]} }
             """.trimIndent()
         )
-        val book = Book(bookUrl = "https://a.com/book/1", name = "测试书")
-        val chapter = BookChapter(bookUrl = book.bookUrl, title = "第1章", url = "https://a.com/c1")
+        val book = Book(bookUrl = "https://a.test/book/1", name = "测试书")
+        val chapter = BookChapter(bookUrl = book.bookUrl, title = "第1章", url = "https://a.test/c1")
 
         val result = JsSourceReview.getReviewSummaryAwait(source, book, chapter)
 
@@ -47,9 +47,9 @@ class JsSourceReviewTest {
     @Test
     fun parseSummaryIgnoreZeroCount() = runBlocking {
         val source = BookSource(
-            bookSourceUrl = "https://a.com",
+            bookSourceUrl = "https://a.test",
             mainJs = """
-                var config = { bookSourceUrl: "https://a.com", bookSourceName: "test" }
+                var config = { bookSourceUrl: "https://a.test", bookSourceName: "test" }
                 function search(k,p) { return [] }
                 function getChapters(b) { return [] }
                 function getContent(c,b) { return "" }
@@ -63,8 +63,8 @@ class JsSourceReviewTest {
                 function getReviewDetail(c,b,pi,pd,pg) { return {items:[]} }
             """.trimIndent()
         )
-        val book = Book(bookUrl = "https://a.com/book/1", name = "测试书")
-        val chapter = BookChapter(bookUrl = book.bookUrl, title = "第1章", url = "https://a.com/c1")
+        val book = Book(bookUrl = "https://a.test/book/1", name = "测试书")
+        val chapter = BookChapter(bookUrl = book.bookUrl, title = "第1章", url = "https://a.test/c1")
 
         val result = JsSourceReview.getReviewSummaryAwait(source, book, chapter)
 
@@ -76,9 +76,9 @@ class JsSourceReviewTest {
     @Test
     fun parseSummaryEmptyArray() = runBlocking {
         val source = BookSource(
-            bookSourceUrl = "https://a.com",
+            bookSourceUrl = "https://a.test",
             mainJs = """
-                var config = { bookSourceUrl: "https://a.com", bookSourceName: "test" }
+                var config = { bookSourceUrl: "https://a.test", bookSourceName: "test" }
                 function search(k,p) { return [] }
                 function getChapters(b) { return [] }
                 function getContent(c,b) { return "" }
@@ -86,8 +86,8 @@ class JsSourceReviewTest {
                 function getReviewDetail(c,b,pi,pd,pg) { return {items:[]} }
             """.trimIndent()
         )
-        val book = Book(bookUrl = "https://a.com/book/1", name = "测试书")
-        val chapter = BookChapter(bookUrl = book.bookUrl, title = "第1章", url = "https://a.com/c1")
+        val book = Book(bookUrl = "https://a.test/book/1", name = "测试书")
+        val chapter = BookChapter(bookUrl = book.bookUrl, title = "第1章", url = "https://a.test/c1")
 
         val result = JsSourceReview.getReviewSummaryAwait(source, book, chapter)
 
@@ -98,9 +98,9 @@ class JsSourceReviewTest {
     @Test
     fun parseDetailNormal() = runBlocking {
         val source = BookSource(
-            bookSourceUrl = "https://a.com",
+            bookSourceUrl = "https://a.test",
             mainJs = """
-                var config = { bookSourceUrl: "https://a.com", bookSourceName: "test" }
+                var config = { bookSourceUrl: "https://a.test", bookSourceName: "test" }
                 function search(k,p) { return [] }
                 function getChapters(b) { return [] }
                 function getContent(c,b) { return "" }
@@ -108,15 +108,15 @@ class JsSourceReviewTest {
                 function getReviewDetail(chapter, book, paraIndex, paraData, page) {
                     return {
                         items: [
-                            { id: "123", content: "评论内容", name: "用户A", avatar: "https://a.com/av.jpg", badge: "作者" }
+                            { id: "123", content: "评论内容", name: "用户A", avatar: "https://a.test/av.jpg", badge: "作者" }
                         ],
-                        nextPageUrl: page < 2 ? "https://a.com/page2" : null
+                        nextPageUrl: page < 2 ? "https://a.test/page2" : null
                     }
                 }
             """.trimIndent()
         )
-        val book = Book(bookUrl = "https://a.com/book/1", name = "测试书")
-        val chapter = BookChapter(bookUrl = book.bookUrl, title = "第1章", url = "https://a.com/c1")
+        val book = Book(bookUrl = "https://a.test/book/1", name = "测试书")
+        val chapter = BookChapter(bookUrl = book.bookUrl, title = "第1章", url = "https://a.test/c1")
 
         val result = JsSourceReview.getReviewDetailAwait(source, book, chapter, 1, "data-x", 1)
 
@@ -126,18 +126,18 @@ class JsSourceReviewTest {
         assertEquals("123", items[0].id)
         assertEquals("评论内容", items[0].content)
         assertEquals("用户A", items[0].name)
-        assertEquals("https://a.com/av.jpg", items[0].avatar)
+        assertEquals("https://a.test/av.jpg", items[0].avatar)
         assertEquals("作者", items[0].badge)
         assertTrue(items[0].replies.isEmpty())
-        assertEquals("https://a.com/page2", nextUrl)
+        assertEquals("https://a.test/page2", nextUrl)
     }
 
     @Test
     fun parseDetailNestedReplies() = runBlocking {
         val source = BookSource(
-            bookSourceUrl = "https://a.com",
+            bookSourceUrl = "https://a.test",
             mainJs = """
-                var config = { bookSourceUrl: "https://a.com", bookSourceName: "test" }
+                var config = { bookSourceUrl: "https://a.test", bookSourceName: "test" }
                 function search(k,p) { return [] }
                 function getChapters(b) { return [] }
                 function getContent(c,b) { return "" }
@@ -156,8 +156,8 @@ class JsSourceReviewTest {
                 }
             """.trimIndent()
         )
-        val book = Book(bookUrl = "https://a.com/book/1", name = "测试书")
-        val chapter = BookChapter(bookUrl = book.bookUrl, title = "第1章", url = "https://a.com/c1")
+        val book = Book(bookUrl = "https://a.test/book/1", name = "测试书")
+        val chapter = BookChapter(bookUrl = book.bookUrl, title = "第1章", url = "https://a.test/c1")
 
         val result = JsSourceReview.getReviewDetailAwait(source, book, chapter, 1, "", 1)
 
@@ -178,9 +178,9 @@ class JsSourceReviewTest {
     @Test
     fun parseDetailMissingContentDropped() = runBlocking {
         val source = BookSource(
-            bookSourceUrl = "https://a.com",
+            bookSourceUrl = "https://a.test",
             mainJs = """
-                var config = { bookSourceUrl: "https://a.com", bookSourceName: "test" }
+                var config = { bookSourceUrl: "https://a.test", bookSourceName: "test" }
                 function search(k,p) { return [] }
                 function getChapters(b) { return [] }
                 function getContent(c,b) { return "" }
@@ -196,8 +196,8 @@ class JsSourceReviewTest {
                 }
             """.trimIndent()
         )
-        val book = Book(bookUrl = "https://a.com/book/1", name = "测试书")
-        val chapter = BookChapter(bookUrl = book.bookUrl, title = "第1章", url = "https://a.com/c1")
+        val book = Book(bookUrl = "https://a.test/book/1", name = "测试书")
+        val chapter = BookChapter(bookUrl = book.bookUrl, title = "第1章", url = "https://a.test/c1")
 
         val result = JsSourceReview.getReviewDetailAwait(source, book, chapter, 1, "", 1)
 
@@ -209,9 +209,9 @@ class JsSourceReviewTest {
     @Test
     fun parseDetailRepliesNullDoesNotCrash() = runBlocking {
         val source = BookSource(
-            bookSourceUrl = "https://a.com",
+            bookSourceUrl = "https://a.test",
             mainJs = """
-                var config = { bookSourceUrl: "https://a.com", bookSourceName: "test" }
+                var config = { bookSourceUrl: "https://a.test", bookSourceName: "test" }
                 function search(k,p) { return [] }
                 function getChapters(b) { return [] }
                 function getContent(c,b) { return "" }
@@ -227,8 +227,8 @@ class JsSourceReviewTest {
                 }
             """.trimIndent()
         )
-        val book = Book(bookUrl = "https://a.com/book/1", name = "测试书")
-        val chapter = BookChapter(bookUrl = book.bookUrl, title = "第1章", url = "https://a.com/c1")
+        val book = Book(bookUrl = "https://a.test/book/1", name = "测试书")
+        val chapter = BookChapter(bookUrl = book.bookUrl, title = "第1章", url = "https://a.test/c1")
 
         val result = JsSourceReview.getReviewDetailAwait(source, book, chapter, 1, "", 1)
 

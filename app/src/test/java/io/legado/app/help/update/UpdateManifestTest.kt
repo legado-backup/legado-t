@@ -14,12 +14,12 @@ class UpdateManifestTest {
             UpdateManifest.Artifact(
                 abi = "armeabi-v7a",
                 fileName = "legado_app_3.26.061010_armeabi-v7a.apk",
-                url = "https://example.com/v7.apk"
+                url = "https://example.test/v7.apk"
             ),
             UpdateManifest.Artifact(
                 abi = "arm64-v8a",
                 fileName = "legado_app_3.26.061010_arm64-v8a.apk",
-                url = "https://example.com/v8.apk"
+                url = "https://example.test/v8.apk"
             )
         )
 
@@ -37,7 +37,7 @@ class UpdateManifestTest {
             UpdateManifest.Artifact(
                 abi = "universal",
                 fileName = "legado_app_3.26.061010.apk",
-                url = "https://example.com/universal.apk"
+                url = "https://example.test/universal.apk"
             )
         )
 
@@ -78,12 +78,12 @@ class UpdateManifestTest {
                 UpdateManifest.Artifact(
                     abi = "armeabi-v7a",
                     fileName = "legado_app_3.26.061010_armeabi-v7a.apk",
-                    url = "https://example.com/v7.apk"
+                    url = "https://example.test/v7.apk"
                 ),
                 UpdateManifest.Artifact(
                     abi = "arm64-v8a",
                     fileName = "legado_app_3.26.061010_arm64-v8a.apk",
-                    url = "https://example.com/v8.apk"
+                    url = "https://example.test/v8.apk"
                 )
             )
         )
@@ -97,7 +97,7 @@ class UpdateManifestTest {
         assertNotNull(info)
         assertEquals("3.26.061010", info!!.tagName)
         assertEquals("更新日志", info.updateLog)
-        assertEquals("https://example.com/v8.apk", info.downloadUrl)
+        assertEquals("https://example.test/v8.apk", info.downloadUrl)
         assertEquals("legado_app_3.26.061010_arm64-v8a.apk", info.fileName)
     }
 
@@ -109,7 +109,7 @@ class UpdateManifestTest {
                 UpdateManifest.Artifact(
                     abi = "arm64-v8a",
                     fileName = "legado_app_3.26.061010_arm64-v8a.apk",
-                    url = "https://example.com/v8.apk"
+                    url = "https://example.test/v8.apk"
                 )
             )
         )
@@ -131,7 +131,7 @@ class UpdateManifestTest {
                 UpdateManifest.Artifact(
                     abi = "arm64-v8a",
                     fileName = "legado_app_3.26.061010_arm64-v8a.apk",
-                    url = "https://example.com/v8.apk"
+                    url = "https://example.test/v8.apk"
                 )
             )
         )
@@ -150,15 +150,15 @@ class UpdateManifestTest {
         val manifest = UpdateManifest(
             versionName = "3.26.061010",
             publishedAt = "2026-06-10T00:00:00Z",
-            pageUrl = "https://example.com/download",
+            pageUrl = "https://example.test/download",
             updateLog = "更新日志",
             artifacts = listOf(
                 UpdateManifest.Artifact(
                     abi = "arm64-v8a",
                     fileName = "legado_app_3.26.061010_arm64-v8a.apk",
                     size = 15078651L,
-                    url = "https://example.com/v8.apk",
-                    githubUrl = "https://github.com/example/v8.apk"
+                    url = "https://example.test/v8.apk",
+                    githubUrl = "https://github.test/example/v8.apk"
                 )
             )
         )
@@ -172,8 +172,8 @@ class UpdateManifestTest {
         assertNotNull(info)
         assertEquals(15078651L, info!!.size)
         assertEquals("2026-06-10T00:00:00Z", info.publishedAt)
-        assertEquals("https://example.com/download", info.pageUrl)
-        assertEquals("https://github.com/example/v8.apk", info.backupDownloadUrl)
+        assertEquals("https://example.test/download", info.pageUrl)
+        assertEquals("https://github.test/example/v8.apk", info.backupDownloadUrl)
     }
 
     @Test
@@ -184,8 +184,8 @@ class UpdateManifestTest {
                 UpdateManifest.Artifact(
                     abi = "arm64-v8a",
                     fileName = "legado_app_3.26.061010_arm64-v8a.apk",
-                    url = "https://github.com/example/v8.apk",
-                    githubUrl = "https://github.com/example/v8.apk"
+                    url = "https://github.test/example/v8.apk",
+                    githubUrl = "https://github.test/example/v8.apk"
                 )
             )
         )
@@ -203,19 +203,19 @@ class UpdateManifestTest {
     fun githubRelease_mapsToUpdateManifest() {
         val release = GithubRelease(
             tagName = "3.26.061010",
-            htmlUrl = "https://github.com/example/releases/tag/3.26.061010",
+            htmlUrl = "https://github.test/example/releases/tag/3.26.061010",
             publishedAt = "2026-06-10T00:00:00Z",
             isPreRelease = true,
             body = "更新日志",
             assets = listOf(
                 GithubRelease.Asset(
-                    apkUrl = "https://github.com/example/legado_app_3.26.061010_arm64-v8a.apk",
+                    apkUrl = "https://github.test/example/legado_app_3.26.061010_arm64-v8a.apk",
                     name = "legado_app_3.26.061010_arm64-v8a.apk",
                     size = 15078651L,
                     state = "uploaded"
                 ),
                 GithubRelease.Asset(
-                    apkUrl = "https://github.com/example/sources.zip",
+                    apkUrl = "https://github.test/example/sources.zip",
                     name = "sources.zip",
                     state = "uploaded"
                 )
@@ -228,7 +228,7 @@ class UpdateManifestTest {
         assertEquals("3.26.061010", manifest.versionName)
         assertEquals("3.26.061010", manifest.tag)
         assertEquals("更新日志", manifest.updateLog)
-        assertEquals("https://github.com/example/releases/tag/3.26.061010", manifest.pageUrl)
+        assertEquals("https://github.test/example/releases/tag/3.26.061010", manifest.pageUrl)
         assertEquals(1, manifest.artifacts.size)
         assertEquals("arm64-v8a", manifest.artifacts[0].abi)
         assertEquals(15078651L, manifest.artifacts[0].size)
@@ -246,7 +246,7 @@ class UpdateManifestTest {
                 UpdateManifest.Artifact(
                     abi = "arm64-v8a",
                     fileName = "legado_app_3.26.08162006_arm64-v8a_release.apk",
-                    url = "https://example.com/v8.apk"
+                    url = "https://example.test/v8.apk"
                 )
             )
         )
@@ -287,7 +287,7 @@ class UpdateManifestTest {
                 UpdateManifest.Artifact(
                     abi = "arm64-v8a",
                     fileName = "legado_app_3.26.08162006_arm64-v8a_release.apk",
-                    url = "https://example.com/v8.apk"
+                    url = "https://example.test/v8.apk"
                 )
             )
         )
@@ -313,7 +313,7 @@ class UpdateManifestTest {
                 UpdateManifest.Artifact(
                     abi = "arm64-v8a",
                     fileName = "legado_app_3.26.081812_arm64-v8a.apk",
-                    url = "https://example.com/v8.apk"
+                    url = "https://example.test/v8.apk"
                 )
             )
         )
@@ -335,7 +335,7 @@ class UpdateManifestTest {
             isPreRelease = true,
             assets = listOf(
                 GithubRelease.Asset(
-                    apkUrl = "https://github.com/example/v8.apk",
+                    apkUrl = "https://github.test/example/v8.apk",
                     name = "legado_app_3.26.08162006_arm64-v8a_release.apk",
                     state = "uploaded"
                 )
@@ -353,7 +353,7 @@ class UpdateManifestTest {
             isPreRelease = true,
             assets = listOf(
                 GithubRelease.Asset(
-                    apkUrl = "https://github.com/example/v8.apk",
+                    apkUrl = "https://github.test/example/v8.apk",
                     name = "legado_app_3.26.08162006_arm64-v8a_release.apk",
                     state = "uploaded"
                 )
@@ -375,7 +375,7 @@ class UpdateManifestTest {
             tagName = "3.26.061010",
             assets = listOf(
                 GithubRelease.Asset(
-                    apkUrl = "https://github.com/example/v8.apk",
+                    apkUrl = "https://github.test/example/v8.apk",
                     name = "legado_app_3.26.061010_arm64-v8a.apk",
                     state = "starter"
                 )

@@ -12,7 +12,7 @@ class JsSourceConfigTest {
 
     private val validScript = """
         var config = {
-          bookSourceUrl: "https://example.com",
+          bookSourceUrl: "https://example.test",
           bookSourceName: "示例源",
           bookSourceType: 0,
           header: "{\"User-Agent\": \"test\"}"
@@ -34,7 +34,7 @@ class JsSourceConfigTest {
     @Test
     fun extractValidScript() {
         val s = JsSourceConfig.extract(validScript)
-        assertEquals("https://example.com", s.bookSourceUrl)
+        assertEquals("https://example.test", s.bookSourceUrl)
         assertEquals("示例源", s.bookSourceName)
         assertEquals(0, s.bookSourceType)
         assertEquals("{\"User-Agent\": \"test\"}", s.header)  // 任意 BookSource 字段透传
@@ -64,7 +64,7 @@ class JsSourceConfigTest {
     fun missingRequiredFunction() {
         assertExtractError(
             """
-            var config = { bookSourceUrl: "https://a.com", bookSourceName: "缺函数" }
+            var config = { bookSourceUrl: "https://a.test", bookSourceName: "缺函数" }
             function search(k, p) { return [] }
             function getChapters(b) { return [] }
             """.trimIndent(),
@@ -84,7 +84,7 @@ class JsSourceConfigTest {
         val s = JsSourceConfig.extract(
             """
             var config = {
-              bookSourceUrl: "https://a.com",
+              bookSourceUrl: "https://a.test",
               bookSourceName: "带规则",
               ruleSearch: { bookList: "hack" },
               mainJs: "hack"
@@ -102,7 +102,7 @@ class JsSourceConfigTest {
     fun exploreUrlRequiresExploreFunction() {
         assertExtractError(
             """
-            var config = { bookSourceUrl: "https://a.com", bookSourceName: "缺发现", exploreUrl: "玄幻::/sort/1" }
+            var config = { bookSourceUrl: "https://a.test", bookSourceName: "缺发现", exploreUrl: "玄幻::/sort/1" }
             function search(k, p) { return [] }
             function getChapters(b) { return [] }
             function getContent(c, b) { return "" }
@@ -115,7 +115,7 @@ class JsSourceConfigTest {
     fun exploreUrlWithExploreFunctionPasses() {
         val s = JsSourceConfig.extract(
             """
-            var config = { bookSourceUrl: "https://a.com", bookSourceName: "带发现", exploreUrl: "玄幻::/sort/1" }
+            var config = { bookSourceUrl: "https://a.test", bookSourceName: "带发现", exploreUrl: "玄幻::/sort/1" }
             function search(k, p) { return [] }
             function getChapters(b) { return [] }
             function getContent(c, b) { return "" }
@@ -130,7 +130,7 @@ class JsSourceConfigTest {
         val s = JsSourceConfig.extract(
             """
             var config = {
-              bookSourceUrl: "https://a.com",
+              bookSourceUrl: "https://a.test",
               bookSourceName: "数组发现",
               exploreUrl: [
                 { title: "玄幻", url: "/sort/1" },
@@ -159,7 +159,7 @@ class JsSourceConfigTest {
         assertExtractError(
             """
             var config = {
-              bookSourceUrl: "https://a.com",
+              bookSourceUrl: "https://a.test",
               bookSourceName: "坏发现",
               exploreUrl: [ { url: "/sort/1" } ]
             }
@@ -177,7 +177,7 @@ class JsSourceConfigTest {
         // 模板留空态:空数组=未声明分类,不触发 explore 配对校验(此脚本未实现 explore)
         val s = JsSourceConfig.extract(
             """
-            var config = { bookSourceUrl: "https://a.com", bookSourceName: "空发现", exploreUrl: [] }
+            var config = { bookSourceUrl: "https://a.test", bookSourceName: "空发现", exploreUrl: [] }
             function search(k, p) { return [] }
             function getChapters(b) { return [] }
             function getContent(c, b) { return "" }
@@ -191,7 +191,7 @@ class JsSourceConfigTest {
         assertExtractError(
             """
             var config = {
-              bookSourceUrl: "https://a.com",
+              bookSourceUrl: "https://a.test",
               bookSourceName: "数组缺函数",
               exploreUrl: [ { title: "玄幻", url: "/sort/1" } ]
             }
@@ -244,8 +244,8 @@ class JsSourceConfigTest {
         // 无能力 scope:顶层引用 java 直接失败(安全设计,spec §5)
         assertExtractError(
             """
-            var probe = java.ajax("https://evil.com")
-            var config = { bookSourceUrl: "https://a.com", bookSourceName: "越权" }
+            var probe = java.ajax("https://evil.test")
+            var config = { bookSourceUrl: "https://a.test", bookSourceName: "越权" }
             """.trimIndent(),
             "执行失败",
         )
@@ -256,7 +256,7 @@ class JsSourceConfigTest {
         val s = JsSourceConfig.extract(
             """
             var config = {
-              bookSourceUrl: "https://a.com",
+              bookSourceUrl: "https://a.test",
               bookSourceName: "表单登录",
               loginUi: [
                 { name: "账号", type: "text" },
@@ -287,7 +287,7 @@ class JsSourceConfigTest {
         // 模板留空态:空数组=未声明,不触发 login 配对校验(此脚本未实现 login)
         val s = JsSourceConfig.extract(
             """
-            var config = { bookSourceUrl: "https://a.com", bookSourceName: "空表单", loginUi: [] }
+            var config = { bookSourceUrl: "https://a.test", bookSourceName: "空表单", loginUi: [] }
             function search(k, p) { return [] }
             function getChapters(b) { return [] }
             function getContent(c, b) { return "" }
@@ -301,7 +301,7 @@ class JsSourceConfigTest {
         val s = JsSourceConfig.extract(
             """
             var config = {
-              bookSourceUrl: "https://a.com",
+              bookSourceUrl: "https://a.test",
               bookSourceName: "字符串表单",
               loginUi: '[{"name":"账号","type":"text"}]'
             }
@@ -319,7 +319,7 @@ class JsSourceConfigTest {
         assertExtractError(
             """
             var config = {
-              bookSourceUrl: "https://a.com",
+              bookSourceUrl: "https://a.test",
               bookSourceName: "坏表单",
               loginUi: [ { type: "text" } ]
             }
@@ -337,7 +337,7 @@ class JsSourceConfigTest {
         assertExtractError(
             """
             var config = {
-              bookSourceUrl: "https://a.com",
+              bookSourceUrl: "https://a.test",
               bookSourceName: "缺登录函数",
               loginUi: [ { name: "账号", type: "text" } ]
             }
@@ -354,13 +354,13 @@ class JsSourceConfigTest {
         // WebView 登录形态:只声明 loginUrl,无需 login 函数
         val s = JsSourceConfig.extract(
             """
-            var config = { bookSourceUrl: "https://a.com", bookSourceName: "网页登录", loginUrl: "https://a.com/login" }
+            var config = { bookSourceUrl: "https://a.test", bookSourceName: "网页登录", loginUrl: "https://a.test/login" }
             function search(k, p) { return [] }
             function getChapters(b) { return [] }
             function getContent(c, b) { return "" }
             """.trimIndent(),
         )
-        assertEquals("https://a.com/login", s.loginUrl)
+        assertEquals("https://a.test/login", s.loginUrl)
     }
 
     @Test
@@ -368,7 +368,7 @@ class JsSourceConfigTest {
         // 文件源详情页直转下载导入,getChapters/getContent 可省略
         val s = JsSourceConfig.extract(
             """
-            var config = { bookSourceUrl: "https://a.com", bookSourceName: "文件源", bookSourceType: 3 }
+            var config = { bookSourceUrl: "https://a.test", bookSourceName: "文件源", bookSourceType: 3 }
             function search(k, p) { return [] }
             function getBookInfo(book) { return {} }
             """.trimIndent(),
@@ -381,7 +381,7 @@ class JsSourceConfigTest {
         // downloadUrls 由 getBookInfo 供给,文件源缺它即死源,导入时拦下
         assertExtractError(
             """
-            var config = { bookSourceUrl: "https://a.com", bookSourceName: "文件源", bookSourceType: 3 }
+            var config = { bookSourceUrl: "https://a.test", bookSourceName: "文件源", bookSourceType: 3 }
             function search(k, p) { return [] }
             """.trimIndent(),
             "getBookInfo",
@@ -392,7 +392,7 @@ class JsSourceConfigTest {
     fun fileSourceStillRequiresSearch() {
         assertExtractError(
             """
-            var config = { bookSourceUrl: "https://a.com", bookSourceName: "文件源", bookSourceType: 3 }
+            var config = { bookSourceUrl: "https://a.test", bookSourceName: "文件源", bookSourceType: 3 }
             function getBookInfo(book) { return {} }
             """.trimIndent(),
             "search",
@@ -403,7 +403,7 @@ class JsSourceConfigTest {
     fun reviewFunctionsPairValid() {
         val s = JsSourceConfig.extract(
             """
-            var config = { bookSourceUrl: "https://a.com", bookSourceName: "段评源" }
+            var config = { bookSourceUrl: "https://a.test", bookSourceName: "段评源" }
             function search(k, p) { return [] }
             function getChapters(b) { return [] }
             function getContent(c, b) { return "" }
@@ -418,7 +418,7 @@ class JsSourceConfigTest {
     fun reviewSummaryWithoutDetailFails() {
         assertExtractError(
             """
-            var config = { bookSourceUrl: "https://a.com", bookSourceName: "缺detail" }
+            var config = { bookSourceUrl: "https://a.test", bookSourceName: "缺detail" }
             function search(k, p) { return [] }
             function getChapters(b) { return [] }
             function getContent(c, b) { return "" }
@@ -432,7 +432,7 @@ class JsSourceConfigTest {
     fun reviewDetailWithoutSummaryFails() {
         assertExtractError(
             """
-            var config = { bookSourceUrl: "https://a.com", bookSourceName: "缺summary" }
+            var config = { bookSourceUrl: "https://a.test", bookSourceName: "缺summary" }
             function search(k, p) { return [] }
             function getChapters(b) { return [] }
             function getContent(c, b) { return "" }
@@ -466,7 +466,7 @@ class JsSourceConfigTest {
         assertExtractError(
             """
             var config = {
-              bookSourceUrl: "https://example.com",
+              bookSourceUrl: "https://example.test",
               bookSourceName: "冲突源",
               loginUi: [{ name: "账号", type: "text" }]
             }

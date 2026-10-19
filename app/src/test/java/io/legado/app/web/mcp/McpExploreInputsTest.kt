@@ -13,9 +13,9 @@ class McpExploreInputsTest {
     private val kinds = listOf(
         ExploreKind("分区标题", null),
         ExploreKind("ERROR:加载失败", "stack"),
-        ExploreKind("热门", "https://example.com/hot"),
-        ExploreKind("更多", "https://example.com/fantasy"),
-        ExploreKind("更多", "https://example.com/city"),
+        ExploreKind("热门", "https://example.test/hot"),
+        ExploreKind("更多", "https://example.test/fantasy"),
+        ExploreKind("更多", "https://example.test/city"),
     )
 
     private fun prepare(json: String, sourceKinds: List<ExploreKind> = kinds): ExploreContainer =
@@ -25,7 +25,7 @@ class McpExploreInputsTest {
     fun `single defaults to first valid category not all categories`() {
         val result = prepare("""{"sourceUrl":"source"}""")
         assertEquals("热门", result.kindTitle)
-        assertEquals("https://example.com/hot", result.kindUrl)
+        assertEquals("https://example.test/hot", result.kindUrl)
         assertEquals("热门", result.kindTitles)
         assertEquals(0L, result.id)
         assertTrue(result.enabled)
@@ -33,17 +33,17 @@ class McpExploreInputsTest {
 
     @Test
     fun `kindUrl-only selects exact URL and restores its title`() {
-        val result = prepare("""{"sourceUrl":"source","kindUrl":"https://example.com/city"}""")
+        val result = prepare("""{"sourceUrl":"source","kindUrl":"https://example.test/city"}""")
         assertEquals("更多", result.kindTitle)
-        assertEquals("https://example.com/city", result.kindUrl)
+        assertEquals("https://example.test/city", result.kindUrl)
     }
 
     @Test
     fun `single snapshot disambiguates duplicate titles and allows removed category fallback`() {
-        val exact = prepare("""{"sourceUrl":"source","kindTitle":"更多","kindUrl":"https://example.com/city"}""")
-        assertEquals("https://example.com/city", exact.kindUrl)
-        val fallback = prepare("""{"sourceUrl":"source","kindTitle":"旧分类","kindUrl":"https://example.com/old"}""")
-        assertEquals("https://example.com/old", fallback.kindUrl)
+        val exact = prepare("""{"sourceUrl":"source","kindTitle":"更多","kindUrl":"https://example.test/city"}""")
+        assertEquals("https://example.test/city", exact.kindUrl)
+        val fallback = prepare("""{"sourceUrl":"source","kindTitle":"旧分类","kindUrl":"https://example.test/old"}""")
+        assertEquals("https://example.test/old", fallback.kindUrl)
     }
 
     @Test
@@ -62,7 +62,7 @@ class McpExploreInputsTest {
     @Test
     fun `JSON array batch preserves single default and can opt into allKinds`() {
         val singleDefault = McpExploreInputs.parseBatch(
-            """{"containers":"[{\"sourceUrl\":\"a\"},{\"sourceUrl\":\"b\",\"kindUrl\":\"https://example.com/city\"}]"}"""
+            """{"containers":"[{\"sourceUrl\":\"a\"},{\"sourceUrl\":\"b\",\"kindUrl\":\"https://example.test/city\"}]"}"""
         )
         assertEquals(listOf(McpExploreKindMode.SELECTED, McpExploreKindMode.SELECTED), singleDefault.map { it.mode })
         val all = McpExploreInputs.parseBatch(
@@ -76,7 +76,7 @@ class McpExploreInputsTest {
     fun `dynamic mode keeps first URL fallback but leaves selection unfrozen`() {
         val result = prepare("""{"sourceUrl":"source","dynamic":true}""")
         assertEquals("热门", result.kindTitle)
-        assertEquals("https://example.com/hot", result.kindUrl)
+        assertEquals("https://example.test/hot", result.kindUrl)
         assertEquals("", result.kindTitles)
         assertEquals("", result.kindUrls)
         val batch = McpExploreInputs.parseBatch("""{"sourceUrls":["a"],"dynamic":true}""").single()
@@ -87,9 +87,9 @@ class McpExploreInputsTest {
     fun `delimiter URLs use dynamic selections rather than corrupted snapshots`() {
         val result = prepare(
             """{"sourceUrl":"source","allKinds":true}""",
-            listOf(ExploreKind("全部", "https://example.com/all<,-{{page}}>.html")),
+            listOf(ExploreKind("全部", "https://example.test/all<,-{{page}}>.html")),
         )
-        assertEquals("https://example.com/all<,-{{page}}>.html", result.kindUrl)
+        assertEquals("https://example.test/all<,-{{page}}>.html", result.kindUrl)
         assertEquals("", result.kindUrls)
         assertEquals("", result.kindTitles)
     }
@@ -154,10 +154,10 @@ class McpExploreInputsTest {
     @Test
     fun `presentation update retains the active category from a multi-category snapshot`() {
         val current = prepare(
-            """{"sourceUrl":"source","kindTitle":"更多","kindUrl":"https://example.com/city","kindTitles":"热门,更多","kindUrls":"https://example.com/hot,https://example.com/city","customTitle":"新标题"}"""
+            """{"sourceUrl":"source","kindTitle":"更多","kindUrl":"https://example.test/city","kindTitles":"热门,更多","kindUrls":"https://example.test/hot,https://example.test/city","customTitle":"新标题"}"""
         )
         assertEquals("更多", current.kindTitle)
-        assertEquals("https://example.com/city", current.kindUrl)
+        assertEquals("https://example.test/city", current.kindUrl)
         assertEquals("热门,更多", current.kindTitles)
     }
 

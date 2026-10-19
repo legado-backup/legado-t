@@ -9,12 +9,14 @@ import io.legado.app.help.config.AppConfig
 import io.legado.app.utils.runOnUI
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import org.junit.Ignore
 import org.junit.Test
 import splitties.init.appCtx
 import splitties.systemservices.downloadManager
 
 class HttpTest {
 
+    @Ignore("Manual network probe; requires a controlled local server")
     @Test
     fun test() {
         webViewDownloadTest()
@@ -33,14 +35,14 @@ class HttpTest {
                 print(url)
                 webView.destroy()
             }
-            webView.loadUrl("https://gj.legado.cc/legado/?url=https://miaogongzi.lanzout.com/iITmP0s7y26d&type=down")
+            webView.loadUrl("https://gateway.test/legado/?url=https://files.test/iITmP0s7y26d&type=down")
         }
     }
 
     private fun downloadManagerTest() {
         runBlocking {
             val request =
-                DownloadManager.Request(Uri.parse("https://gj.legado.cc/legado/?url=https://miaogongzi.lanzout.com/iITmP0s7y26d&type=down"))
+                DownloadManager.Request(Uri.parse("https://gateway.test/legado/?url=https://files.test/iITmP0s7y26d&type=down"))
             // 设置通知
             request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_HIDDEN)
             // 设置下载文件保存的路径和文件名

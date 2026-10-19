@@ -191,7 +191,7 @@ class JsTest {
                     }
                     .build()
             }
-            val url = """http://tts.baidu.com/text2audio,{"method":"POST","body":"tex={{java.encodeURI(java.encodeURI(speakText))}}&spd={{(speakSpeed + 5) / 10 + 4}}&per=3&cuid=baidu_speech_demo&idx=1&cod=2&lan=zh&ctp=1&pdt=505&vol=5&aue=6&pit=5&res_tag=audio"} """
+            val url = """http://tts.test/text2audio,{"method":"POST","body":"tex={{java.encodeURI(java.encodeURI(speakText))}}&spd={{(speakSpeed + 5) / 10 + 4}}&per=3&cuid=baidu_speech_demo&idx=1&cod=2&lan=zh&ctp=1&pdt=505&vol=5&aue=6&pit=5&res_tag=audio"} """
             io.legado.app.model.analyzeRule.AnalyzeUrl(
                 url,
                 speakText = "中文 text",
@@ -255,6 +255,41 @@ class JsTest {
                 "{\"key\":\"value\"}",
                 requestBody.replace(Regex("\\s"), "")
             )
+        } finally {
+            io.legado.app.help.http.HttpBridge.proxyClient = previousClientFactory
+        }
+    }
+
+    @Test
+    fun declarativeSearchUrlOptionsSendRefererWithCookieJarEnabled() = runBlocking {
+        val previousClientFactory = io.legado.app.help.http.HttpBridge.proxyClient
+        var referer = ""
+        try {
+            io.legado.app.help.http.HttpBridge.proxyClient = {
+                okhttp3.OkHttpClient.Builder()
+                    .addInterceptor { chain ->
+                        referer = chain.request().header("Referer").orEmpty()
+                        okhttp3.Response.Builder()
+                            .request(chain.request())
+                            .protocol(okhttp3.Protocol.HTTP_1_1)
+                            .code(200)
+                            .message("OK")
+                            .body("{}".toResponseBody())
+                            .build()
+                    }
+                    .build()
+            }
+            val source = io.legado.app.data.entities.BookSource(
+                bookSourceName = "测试",
+                bookSourceUrl = "https://fixture.test",
+                searchUrl = "https://fixture.test/index.php?ngmar=chapterlist&h=jjwxc&bookid=7979036&sajax=getchapterlist,{\"headers\":{\"Referer\":\"https://fixture.test/app.v2.php\"}}",
+                header = "{\"User-Agent\":\"fixture\"}",
+                enabledCookieJar = true,
+            )
+
+            io.legado.app.model.webBook.WebBook.searchBookAwait(source, "测试", 1)
+
+            Assert.assertEquals("https://fixture.test/app.v2.php", referer)
         } finally {
             io.legado.app.help.http.HttpBridge.proxyClient = previousClientFactory
         }

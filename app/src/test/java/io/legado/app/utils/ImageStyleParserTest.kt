@@ -93,13 +93,13 @@ class ImageStyleParserTest {
 
     @Test
     fun `from src without option returns null`() {
-        assertNull(ImageStyleParser.ImageStyle.fromSrc("https://example.com/a.jpg"))
+        assertNull(ImageStyleParser.ImageStyle.fromSrc("https://example.test/a.jpg"))
     }
 
     @Test
     fun `from src with style option`() {
         val style = ImageStyleParser.ImageStyle.fromSrc(
-            "https://example.com/a.svg,{\"style\":\"TEXT\"}"
+            "https://example.test/a.svg,{\"style\":\"TEXT\"}"
         )
         assertEquals(ImageStyleParser.ImageStyle.Text, style)
     }
@@ -108,7 +108,7 @@ class ImageStyleParserTest {
     fun `from src with other option but no style returns null`() {
         assertNull(
             ImageStyleParser.ImageStyle.fromSrc(
-                "https://example.com/a.svg,{\"js\":\"getSvg()\"}"
+                "https://example.test/a.svg,{\"js\":\"getSvg()\"}"
             )
         )
     }
@@ -116,7 +116,7 @@ class ImageStyleParserTest {
     @Test
     fun `from src with style size option`() {
         val style = ImageStyleParser.ImageStyle.fromSrc(
-            "https://example.com/a.jpg,{\"style\":\"width:50%\",\"js\":\"x\"}"
+            "https://example.test/a.jpg,{\"style\":\"width:50%\",\"js\":\"x\"}"
         ) as ImageStyleParser.ImageStyle.Size
         assertEquals(50f, style.widthPercent)
     }

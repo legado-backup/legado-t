@@ -1,14 +1,15 @@
 name: Test Build
 
 on:
+  pull_request:
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-
-permissions:
-  contents: write
 
 jobs:
 
@@ -27,10 +28,10 @@ jobs:
           echo "versionL=$(date -d "8 hour" -u +3.%y.%m%d%H%M)" >> $GITHUB_OUTPUT
       - id: check
         run: |
-          if [ ${{ secrets.LANZOU_ID }} ]; then
+          if [ -n "${{ secrets.LANZOU_ID }}" ]; then
             echo "lanzou=yes" >> $GITHUB_OUTPUT
           fi
-          if [ ${{ secrets.BOT_TOKEN }} ]; then
+          if [ -n "${{ secrets.BOT_TOKEN }}" ]; then
             echo "telegram=yes" >> $GITHUB_OUTPUT
           fi
 
@@ -94,6 +95,9 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v5
 
+      - name: Check R8 mapping checker
+        run: python3 -m unittest discover -s .github/scripts -p 'test_check_r8_mapping.py'
+
       - name: Build With Gradle
         continue-on-error: true
         run: |
@@ -120,6 +124,9 @@ jobs:
           for file in `ls ${{ github.workspace }}/app/build/outputs/mapping/*/mapping.txt`; do
             mv "$file" ${{ github.workspace }}/mapping/mapping.txt
           done
+
+      - name: Verify R8 reflection contracts
+        run: python3 .github/scripts/check_r8_mapping.py mapping/mapping.txt
 
       - name: Move Missing Rules Files
         run: |
@@ -177,6 +184,8 @@ jobs:
   prerelease:
     needs: [ prepare, build ]
     if: github.event_name != 'pull_request' && github.repository == 'skybbk1001/legadoT'
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     env: 
       VERSION: ${{ needs.prepare.outputs.version }}

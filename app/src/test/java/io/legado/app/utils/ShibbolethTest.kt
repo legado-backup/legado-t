@@ -55,7 +55,7 @@ class ShibbolethTest {
 
     @Test
     fun `raw HTTP sibling envelope parses as valid`() {
-        val url = "http://example.com/path/file.json?key=4%2F5"
+        val url = "http://example.test/path/file.json?key=4%2F5"
         val text = "复制口令到阅读导入$url！sy©0¥Sigma^"
 
         assertEquals(
@@ -69,11 +69,11 @@ class ShibbolethTest {
     @Test
     fun `missing or disordered delimiters are invalid without throwing`() {
         val malformed = listOf(
-            "复制口令到阅读导入#L:example.com",
-            "复制口令到阅读导入#L:example.com！sy",
-            "复制口令到阅读导入#L:example.com！sy©0",
-            "复制口令到阅读导入#L:example.com！sy©0¥Sigma",
-            "复制口令到阅读导入#L:example.com©0！sy¥Sigma^",
+            "复制口令到阅读导入#L:example.test",
+            "复制口令到阅读导入#L:example.test！sy",
+            "复制口令到阅读导入#L:example.test！sy©0",
+            "复制口令到阅读导入#L:example.test！sy©0¥Sigma",
+            "复制口令到阅读导入#L:example.test©0！sy¥Sigma^",
         )
 
         malformed.forEach {
@@ -131,13 +131,13 @@ class ShibbolethTest {
     @Test
     fun `encoder accepts only valid https URLs`() {
         assertTrue(Shibboleth.canEncode("https://example.com/path"))
-        assertFalse(Shibboleth.canEncode("http://example.com/path"))
-        assertFalse(Shibboleth.canEncode("HTTPS://example.com/path"))
-        assertFalse(Shibboleth.canEncode("Https://example.com/path"))
+        assertFalse(Shibboleth.canEncode("http://example.test/path"))
+        assertFalse(Shibboleth.canEncode("HTTPS://example.test/path"))
+        assertFalse(Shibboleth.canEncode("Https://example.test/path"))
         assertFalse(Shibboleth.canEncode("https:///missing-host"))
-        assertNull(Shibboleth.encode("http://example.com", ShibbolethType.BOOK_SOURCE, 0, fixedTime))
-        assertNull(Shibboleth.encode("HTTPS://example.com", ShibbolethType.BOOK_SOURCE, 0, fixedTime))
-        assertNull(Shibboleth.encode("Https://example.com", ShibbolethType.BOOK_SOURCE, 0, fixedTime))
+        assertNull(Shibboleth.encode("http://example.test", ShibbolethType.BOOK_SOURCE, 0, fixedTime))
+        assertNull(Shibboleth.encode("HTTPS://example.test", ShibbolethType.BOOK_SOURCE, 0, fixedTime))
+        assertNull(Shibboleth.encode("Https://example.test", ShibbolethType.BOOK_SOURCE, 0, fixedTime))
         assertNull(Shibboleth.encode("not a url", ShibbolethType.BOOK_SOURCE, 0, fixedTime))
     }
 

@@ -11,11 +11,11 @@ import org.junit.Test
 class JsSourceMarshallerTest {
 
     private val textSource = BookSource(
-        bookSourceUrl = "https://src.com", bookSourceName = "文本源",
+        bookSourceUrl = "https://src.test", bookSourceName = "文本源",
         bookSourceType = 0, customOrder = 7,
     )
     private val audioSource = BookSource(
-        bookSourceUrl = "https://audio.com", bookSourceName = "音频源",
+        bookSourceUrl = "https://audio.test", bookSourceName = "音频源",
         bookSourceType = 1,
     )
 
@@ -35,14 +35,14 @@ class JsSourceMarshallerTest {
     @Test
     fun parseSearchBooksInjectsOriginAndType() {
         val json = """[
-          {"name":"书A","author":"作者A","bookUrl":"https://src.com/b/1",
+          {"name":"书A","author":"作者A","bookUrl":"https://src.test/b/1",
            "origin":"evil","originName":"evil","type":1},
-          {"name":"书B","bookUrl":"https://src.com/b/2"}
+          {"name":"书B","bookUrl":"https://src.test/b/2"}
         ]"""
         val books = JsSourceMarshaller.parseSearchBooks(json, audioSource)
         assertEquals(2, books.size)
         // origin 族强制注入,JS 返回的 evil 被覆盖
-        assertEquals("https://audio.com", books[0].origin)
+        assertEquals("https://audio.test", books[0].origin)
         assertEquals("音频源", books[0].originName)
         // type=1 是 BookSourceType 误传 → 拒收,回退源类型(audio=32)
         assertEquals(BookType.audio, books[0].type)
@@ -104,18 +104,18 @@ class JsSourceMarshallerTest {
 
     @Test
     fun parseChaptersInjectsAndResolves() {
-        val book = Book(bookUrl = "https://src.com/b/1")
-        book.tocUrl = "https://src.com/toc/1"
+        val book = Book(bookUrl = "https://src.test/b/1")
+        book.tocUrl = "https://src.test/toc/1"
         val json = """[
           {"title":"第1章","url":"/read/1"},
-          {"title":"第2章","url":"https://other.com/read/2","isVip":true},
+          {"title":"第2章","url":"https://other.test/read/2","isVip":true},
           {"url":"无标题"}
         ]"""
         val chapters = JsSourceMarshaller.parseChapters(json, book, textSource)
         assertEquals(2, chapters.size)
-        assertEquals("https://src.com/read/1", chapters[0].url)     // 相对 → 绝对
-        assertEquals("https://src.com/b/1", chapters[0].bookUrl)    // 注入
-        assertEquals("https://src.com/toc/1", chapters[0].baseUrl)  // 注入
+        assertEquals("https://src.test/read/1", chapters[0].url)     // 相对 → 绝对
+        assertEquals("https://src.test/b/1", chapters[0].bookUrl)    // 注入
+        assertEquals("https://src.test/toc/1", chapters[0].baseUrl)  // 注入
         assertEquals(0, chapters[0].index)
         assertEquals(1, chapters[1].index)                          // 按数组序注入
         assertTrue(chapters[1].isVip)                               // 可选字段透传
@@ -123,8 +123,8 @@ class JsSourceMarshallerTest {
 
     @Test
     fun parseChaptersVolumeRowKeepsUrlAsTitle() {
-        val book = Book(bookUrl = "https://src.com/b/1")
-        book.tocUrl = "https://src.com/toc/1"
+        val book = Book(bookUrl = "https://src.test/b/1")
+        book.tocUrl = "https://src.test/toc/1"
         val json = """[
           {"title":"第一卷","url":"第一卷","isVolume":true},
           {"title":"第1章","url":"/read/1"}
@@ -134,7 +134,7 @@ class JsSourceMarshallerTest {
         // 卷行 url==title 豁免绝对化——JsSourceBook 卷占位守卫(url.startsWith(title))因此可达
         assertEquals("第一卷", chapters[0].url)
         assertTrue(chapters[0].isVolume)
-        assertEquals("https://src.com/read/1", chapters[1].url)
+        assertEquals("https://src.test/read/1", chapters[1].url)
     }
 
     @Test
@@ -150,15 +150,15 @@ class JsSourceMarshallerTest {
 
     @Test
     fun mergeBookInfoDownloadUrlsLandsAndResolves() {
-        val book = Book(bookUrl = "https://src.com/b/1")
+        val book = Book(bookUrl = "https://src.test/b/1")
         JsSourceMarshaller.mergeBookInfo(
             book,
-            """{"downloadUrls":["/down/1.txt","https://cdn.com/2.epub"]}""",
+            """{"downloadUrls":["/down/1.txt","https://cdn.test/2.epub"]}""",
             textSource,
         )
         // 文件源数据出口:相对 → 按详情页补全,绝对原样
         assertEquals(
-            listOf("https://src.com/down/1.txt", "https://cdn.com/2.epub"),
+            listOf("https://src.test/down/1.txt", "https://cdn.test/2.epub"),
             book.downloadUrls,
         )
     }

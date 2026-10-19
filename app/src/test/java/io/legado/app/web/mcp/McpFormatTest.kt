@@ -19,15 +19,15 @@ class McpFormatTest {
 
     @Test
     fun summarizeFilterAndShape() {
-        val a = BookSource(bookSourceName = "起点", bookSourceUrl = "https://a.com")
-        val b = BookSource(bookSourceName = "笔趣", bookSourceUrl = "https://b.com")
+        val a = BookSource(bookSourceName = "起点", bookSourceUrl = "https://a.test")
+        val b = BookSource(bookSourceName = "笔趣", bookSourceUrl = "https://b.test")
         val all = McpFormat.summarizeSources(listOf(a, b), null)
         assertEquals(2, all.size)
         assertEquals("起点", all[0]["bookSourceName"])
         assertEquals(false, all[0]["isJsSource"])
-        val hit = McpFormat.summarizeSources(listOf(a, b), "B.COM")
+        val hit = McpFormat.summarizeSources(listOf(a, b), "b.test")
         assertEquals(1, hit.size)
-        assertEquals("https://b.com", hit[0]["bookSourceUrl"])
+        assertEquals("https://b.test", hit[0]["bookSourceUrl"])
     }
 
     @Test
@@ -116,18 +116,18 @@ class McpFormatTest {
     fun renderCheckSummarySeparatesGoodAndBad() {
         val bad = BookSource(
             bookSourceName = "坏站",
-            bookSourceUrl = "https://bad.com",
+            bookSourceUrl = "https://bad.test",
             bookSourceGroup = "自定义,搜索失效",
             bookSourceComment = "// Error: 搜索超时",
         )
         val good = BookSource(
             bookSourceName = "好站",
-            bookSourceUrl = "https://good.com",
+            bookSourceUrl = "https://good.test",
             respondTime = 3000L,
         )
         val rendered = McpFormat.renderCheckSummary(
             listOf(bad, good),
-            mapOf("https://bad.com" to "[00:12.000] 校验失败:搜索失效"),
+            mapOf("https://bad.test" to "[00:12.000] 校验失败:搜索失效"),
             180000L,
         )
         assertTrue(rendered.contains("坏源 1/2"))
@@ -141,7 +141,7 @@ class McpFormatTest {
     fun renderCheckSummaryTimeoutJudgedBad() {
         val slow = BookSource(
             bookSourceName = "超时站",
-            bookSourceUrl = "https://slow.com",
+            bookSourceUrl = "https://slow.test",
             respondTime = 200000L,
         )
         val rendered = McpFormat.renderCheckSummary(listOf(slow), emptyMap(), 180000L)

@@ -98,6 +98,9 @@ jobs:
           chmod +x gradlew
           ./gradlew assemble${{ env.product }}release --build-cache --parallel --daemon --warning-mode all
 
+      - name: Verify R8 reflection contracts
+        run: python3 .github/scripts/check_r8_mapping.py app/build/outputs/mapping/appRelease/mapping.txt
+
       - name: Organize the Files
         run: |
           mkdir -p ${{ github.workspace }}/apk/
