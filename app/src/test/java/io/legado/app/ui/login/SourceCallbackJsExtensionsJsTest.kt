@@ -18,6 +18,25 @@ class SourceCallbackJsExtensionsJsTest {
     }
 
     @Test
+    fun sourceStorageMethodsRemainCallableFromRhinoFacade() {
+        val bindings = ScriptBindings().apply { put("java", SourceCallbackJsExtensions(null, null)) }
+
+        assertEquals("function", RhinoScriptEngine.eval("typeof java.put", bindings))
+        assertEquals("function", RhinoScriptEngine.eval("typeof java.get", bindings))
+    }
+
+    @Test
+    fun inheritedDefaultArgumentMethodsRemainCallableFromRhino() {
+        val bindings = ScriptBindings().apply { put("java", SourceCallbackJsExtensions(null, null)) }
+
+        assertEquals("https://example.test", RhinoScriptEngine.eval(
+            "java.toURL('https://example.test').origin",
+            bindings,
+        ))
+        assertEquals("function", RhinoScriptEngine.eval("typeof java.openUrl", bindings))
+    }
+
+    @Test
     fun fourArgumentRssCallIsAcceptedByRhinoEvenWithoutAnActivity() {
         val bindings = ScriptBindings().apply { put("java", SourceCallbackJsExtensions(null, null)) }
         assertNull(

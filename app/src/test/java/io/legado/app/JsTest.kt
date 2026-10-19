@@ -52,6 +52,73 @@ class JsTest {
     }
 
     @Test
+    fun analyzeRuleJavaDelegateExposesRhinoDefaultArgumentEntrypoints() {
+        val previousFactory = io.legado.app.model.analyzeRule.AnalyzeRule.javaDelegateFactory
+        try {
+            io.legado.app.model.analyzeRule.AnalyzeRule.javaDelegateFactory = {
+                io.legado.app.model.analyzeRule.AnalyzeRuleAndroidDelegate(it)
+            }
+            val rule = io.legado.app.model.analyzeRule.AnalyzeRule()
+            val result = rule.evalJS(
+                """
+                java.setContent('<span class=\"title\">Works</span>');
+                [
+                    java.getString('span.title@text'),
+                    java.getStringList('span.title@text').get(0),
+                    java.splitSourceRule('span.title@text').size(),
+                    java.evalJS('1 + 1')
+                ].join('|')
+                """.trimIndent()
+            )
+            Assert.assertEquals("Works|Works|1|2.0", result)
+        } finally {
+            io.legado.app.model.analyzeRule.AnalyzeRule.javaDelegateFactory = previousFactory
+        }
+    }
+
+    @Test
+    fun analyzeRuleAndAnalyzeUrlDelegatesKeepRhinoVisibleOverloads() {
+        fun assertMethod(type: Class<*>, name: String, vararg parameterTypes: Class<*>) {
+            Assert.assertNotNull(
+                "${type.simpleName}.$name(${parameterTypes.joinToString { it.simpleName }})",
+                type.getMethod(name, *parameterTypes),
+            )
+        }
+
+        val ruleDelegate = io.legado.app.model.analyzeRule.AnalyzeRuleAndroidDelegate::class.java
+        assertMethod(ruleDelegate, "setContent", Any::class.java)
+        assertMethod(ruleDelegate, "evalJS", String::class.java)
+        assertMethod(ruleDelegate, "getStringList", String::class.java)
+        assertMethod(ruleDelegate, "getStringList", List::class.java)
+        assertMethod(ruleDelegate, "getString", String::class.java)
+        assertMethod(ruleDelegate, "getString", List::class.java)
+        assertMethod(ruleDelegate, "splitSourceRule", String::class.java)
+
+        val urlDelegate = io.legado.app.model.analyzeRule.AnalyzeUrlAndroidDelegate::class.java
+        assertMethod(urlDelegate, "evalJS", String::class.java)
+        assertMethod(urlDelegate, "getStrResponse")
+        assertMethod(urlDelegate, "getStrResponse", String::class.java)
+        assertMethod(urlDelegate, "getStrResponse", String::class.java, String::class.java)
+    }
+
+    @Test
+    fun analyzeUrlJavaDelegateExposesNoArgumentResponseEntrypoint() = runBlocking {
+        val previousFactory = io.legado.app.model.analyzeRule.AnalyzeUrl.javaDelegateFactory
+        try {
+            io.legado.app.model.analyzeRule.AnalyzeUrl.javaDelegateFactory = {
+                io.legado.app.model.analyzeRule.AnalyzeUrlAndroidDelegate(it)
+            }
+            val analyzeUrl = io.legado.app.model.analyzeRule.AnalyzeUrl(
+                "data:text/plain,ok"
+            )
+            val result = analyzeUrl.evalJS("java.getStrResponse().body()")
+            Assert.assertEquals("ok", result)
+        } finally {
+            io.legado.app.model.analyzeRule.AnalyzeUrl.javaDelegateFactory = previousFactory
+        }
+    }
+
+    @Test
     fun httpTtsJavaDelegateEncodesBaiduFormBody() = runBlocking {
         val previousFactory = io.legado.app.model.analyzeRule.AnalyzeUrl.javaDelegateFactory
         val previousClientFactory = io.legado.app.help.http.HttpBridge.proxyClient
