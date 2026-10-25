@@ -63,7 +63,7 @@ class N5VisualTest {
     fun `book source summary card floats and import has empty icon`() {
         val edit = ProjectSources.app("src/main/res/layout/activity_book_source_edit.xml")
         assertTrue("摘要卡应用 background_card 浮起", edit.contains("cardBackgroundColor=\"@color/background_card\""))
-        val dlg = ProjectSources.app("src/main/res/layout/dialog_recycler_view.xml")
+        val dlg = ProjectSources.app("src/main/res/layout/dialog_recycler_view_adaptive.xml")
         assertTrue("导入弹窗空态应有图标", dlg.contains("@+id/iv_empty"))
     }
 

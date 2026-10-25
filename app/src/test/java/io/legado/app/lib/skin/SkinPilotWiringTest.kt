@@ -86,7 +86,7 @@ class SkinPilotWiringTest {
     /** R2c-w1:弹窗 toolbar 施色已声明化,ui/ 无手动残留(双写会掩盖引擎故障) */
     @Test
     fun `dialog toolbars declare themePrimary and manual paint is gone`() {
-        listOf("dialog_recycler_view", "dialog_book_change_source", "dialog_text_view").forEach {
+        listOf("dialog_recycler_view", "dialog_recycler_view_adaptive", "dialog_book_change_source", "dialog_text_view").forEach {
             assertTrue(
                 "$it 的 tool_bar 缺 themePrimary 声明",
                 ProjectSources.app("src/main/res/layout/$it.xml")

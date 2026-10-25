@@ -13,7 +13,7 @@ import io.legado.app.base.BaseDialogFragment
 import io.legado.app.base.adapter.ItemViewHolder
 import io.legado.app.base.adapter.RecyclerAdapter
 import io.legado.app.data.entities.DictRule
-import io.legado.app.databinding.DialogRecyclerViewBinding
+import io.legado.app.databinding.DialogRecyclerViewAdaptiveBinding
 import io.legado.app.databinding.ItemSourceImportBinding
 import io.legado.app.ui.widget.dialog.CodeDialog
 import io.legado.app.ui.widget.dialog.WaitDialog
@@ -25,7 +25,7 @@ import io.legado.app.utils.viewbindingdelegate.viewBinding
 import io.legado.app.utils.visible
 import splitties.views.onClick
 
-class ImportDictRuleDialog() : BaseDialogFragment(R.layout.dialog_recycler_view),
+class ImportDictRuleDialog() : BaseDialogFragment(R.layout.dialog_recycler_view_adaptive),
     CodeDialog.Callback {
 
     override val dialogEdgeInset = true
@@ -37,7 +37,7 @@ class ImportDictRuleDialog() : BaseDialogFragment(R.layout.dialog_recycler_view)
         }
     }
 
-    private val binding by viewBinding(DialogRecyclerViewBinding::bind)
+    private val binding by viewBinding(DialogRecyclerViewAdaptiveBinding::bind)
     private val viewModel by viewModels<ImportDictRuleViewModel>()
     private val adapter by lazy { SourcesAdapter(requireContext()) }
 

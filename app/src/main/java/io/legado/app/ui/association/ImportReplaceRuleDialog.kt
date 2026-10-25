@@ -18,7 +18,7 @@ import io.legado.app.constant.PreferKey
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.ReplaceRule
 import io.legado.app.databinding.DialogCustomGroupBinding
-import io.legado.app.databinding.DialogRecyclerViewBinding
+import io.legado.app.databinding.DialogRecyclerViewAdaptiveBinding
 import io.legado.app.databinding.ItemSourceImportBinding
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.ui.widget.dialog.CodeDialog
@@ -33,7 +33,7 @@ import io.legado.app.utils.viewbindingdelegate.viewBinding
 import io.legado.app.utils.visible
 import splitties.views.onClick
 
-class ImportReplaceRuleDialog() : BaseDialogFragment(R.layout.dialog_recycler_view),
+class ImportReplaceRuleDialog() : BaseDialogFragment(R.layout.dialog_recycler_view_adaptive),
     Toolbar.OnMenuItemClickListener,
     CodeDialog.Callback {
 
@@ -46,7 +46,7 @@ class ImportReplaceRuleDialog() : BaseDialogFragment(R.layout.dialog_recycler_vi
         }
     }
 
-    private val binding by viewBinding(DialogRecyclerViewBinding::bind)
+    private val binding by viewBinding(DialogRecyclerViewAdaptiveBinding::bind)
     private val viewModel by viewModels<ImportReplaceRuleViewModel>()
     private val adapter by lazy { SourcesAdapter(requireContext()) }
 
