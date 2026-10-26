@@ -18,6 +18,73 @@ import org.junit.Test
 
 class JsTest {
 
+    private class AnalyzeRuleExtensionsProbe : io.legado.app.help.JsExtensionsAndroid {
+        override fun getSource(): io.legado.app.data.entities.BaseSource? = null
+
+        override fun get(
+            urlStr: String,
+            headers: Map<String, String>,
+        ): org.jsoup.Connection.Response = throw IllegalStateException("get:$urlStr:$headers")
+
+        override fun get(
+            urlStr: String,
+            header: String?,
+        ): org.jsoup.Connection.Response = throw IllegalStateException("get:$urlStr:$header")
+
+        override fun post(
+            urlStr: String,
+            body: String,
+            headers: Map<String, String>,
+        ): org.jsoup.Connection.Response = throw IllegalStateException("post:$urlStr:$body:$headers")
+
+        override fun post(
+            urlStr: String,
+            body: String,
+            header: String?,
+        ): org.jsoup.Connection.Response = throw IllegalStateException("post:$urlStr:$body:$header")
+    }
+
+    @Test
+    fun analyzeRuleConstructedInsideJsLibraryExposesNetworkAndLogMethods() {
+        val scope = RhinoScriptEngine.getRuntimeScope(ScriptBindings())
+        val result = RhinoScriptEngine.eval(
+            "var java = new Packages.io.legado.app.model.analyzeRule.AnalyzeRule(); " +
+                "[typeof java.get, typeof java.post, typeof java.log, java.log('ok')].join('|')",
+            scope,
+        )
+
+        Assert.assertEquals("function|function|function|ok", result)
+    }
+
+    @Test
+    fun analyzeRuleNetworkMethodsForwardToAndroidExtensions() {
+        val analyzeRule = io.legado.app.model.analyzeRule.AnalyzeRule()
+        val previousFactory = io.legado.app.model.analyzeRule.AnalyzeRule.javaDelegateFactory
+        io.legado.app.model.analyzeRule.AnalyzeRule.javaDelegateFactory = {
+            AnalyzeRuleExtensionsProbe()
+        }
+        try {
+            val getError = runCatching { analyzeRule.get("https://test.invalid", "{}") }
+                .exceptionOrNull()
+            val getMapError = runCatching {
+                analyzeRule.get("https://test.invalid", mapOf("X-Test" to "1"))
+            }.exceptionOrNull()
+            val postError = runCatching {
+                analyzeRule.post("https://test.invalid", "payload", "{}")
+            }.exceptionOrNull()
+            val postMapError = runCatching {
+                analyzeRule.post("https://test.invalid", "payload", mapOf("X-Test" to "1"))
+            }.exceptionOrNull()
+
+            Assert.assertEquals("get:https://test.invalid:{}", getError?.message)
+            Assert.assertEquals("get:https://test.invalid:{X-Test=1}", getMapError?.message)
+            Assert.assertEquals("post:https://test.invalid:payload:{}", postError?.message)
+            Assert.assertEquals("post:https://test.invalid:payload:{X-Test=1}", postMapError?.message)
+        } finally {
+            io.legado.app.model.analyzeRule.AnalyzeRule.javaDelegateFactory = previousFactory
+        }
+    }
+
     @Language("js")
     private val printJs = """
         function print(str, newline) {

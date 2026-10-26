@@ -60,6 +60,7 @@
 # 保持js引擎调用的java类
 -keep class * extends io.legado.app.help.JsExtensions{*;}
 # AnalyzeRule Android bridge classes are called by Rhino reflection, not static references.
+-keep class io.legado.app.model.analyzeRule.AnalyzeRule { *; }
 -keep class io.legado.app.model.analyzeRule.AnalyzeRuleAndroidDelegate { *; }
 -keep class io.legado.app.model.analyzeRule.AnalyzeUrlAndroidDelegate { *; }
 # Gson parses URL option JSON into this reflection-only DTO by field name.

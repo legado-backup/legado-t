@@ -378,7 +378,7 @@ interface JsExtensionsAndroid : JsExtensionsDelegate, JsEncodeUtilsAndroid {
     /**
      * js实现重定向拦截,网络访问get
      */
-    fun get(urlStr: String, headers: Map<String, String>): Connection.Response {
+    override fun get(urlStr: String, headers: Map<String, String>): Connection.Response {
         val requestHeaders = if (getSource()?.enabledCookieJar == true) {
             headers.toMutableMap().apply { put(cookieJarHeader, "1") }
         } else headers
@@ -399,7 +399,7 @@ interface JsExtensionsAndroid : JsExtensionsDelegate, JsEncodeUtilsAndroid {
     /**
      * js实现重定向拦截,网络访问get (header为JSON字符串)
      */
-    fun get(urlStr: String, header: String?): Connection.Response {
+    override fun get(urlStr: String, header: String?): Connection.Response {
         val headerMap = GSON.fromJsonObject<Map<String, String>>(header).getOrNull() ?: emptyMap()
         return get(urlStr, headerMap)
     }
@@ -436,7 +436,7 @@ interface JsExtensionsAndroid : JsExtensionsDelegate, JsEncodeUtilsAndroid {
     /**
      * 网络访问post
      */
-    fun post(urlStr: String, body: String, headers: Map<String, String>): Connection.Response {
+    override fun post(urlStr: String, body: String, headers: Map<String, String>): Connection.Response {
         val requestHeaders = if (getSource()?.enabledCookieJar == true) {
             headers.toMutableMap().apply { put(cookieJarHeader, "1") }
         } else headers
@@ -458,7 +458,7 @@ interface JsExtensionsAndroid : JsExtensionsDelegate, JsEncodeUtilsAndroid {
     /**
      * 网络访问post (header为JSON字符串)
      */
-    fun post(urlStr: String, body: String, header: String?): Connection.Response {
+    override fun post(urlStr: String, body: String, header: String?): Connection.Response {
         val headerMap = GSON.fromJsonObject<Map<String, String>>(header).getOrNull() ?: emptyMap()
         return post(urlStr, body, headerMap)
     }
@@ -866,7 +866,7 @@ interface JsExtensionsAndroid : JsExtensionsDelegate, JsEncodeUtilsAndroid {
     /**
      * 输出调试日志
      */
-    fun log(msg: Any?): Any? {
+    override fun log(msg: Any?): Any? {
         rhinoContextOrNull?.ensureActive()
         val source = getSource()
         source?.let {

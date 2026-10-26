@@ -30,6 +30,7 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.apache.commons.text.StringEscapeUtils
+import org.jsoup.Connection
 import org.jsoup.nodes.Node
 import org.htmlunit.corejs.javascript.NativeArray
 import org.htmlunit.corejs.javascript.NativeObject
@@ -110,7 +111,7 @@ class AnalyzeRule(
         try {
             redirectUrl = URL(url)
         } catch (e: Exception) {
-            log("URL($url) error\n${e.localizedMessage}")
+            logInternal("URL($url) error\n${e.localizedMessage}")
         }
         return redirectUrl
     }
@@ -882,6 +883,33 @@ class AnalyzeRule(
         return source
     }
 
+    fun get(urlStr: String, headers: Map<String, String>): Connection.Response {
+        return getAndroidJavaExtensions().get(urlStr, headers)
+    }
+
+    fun get(urlStr: String, header: String?): Connection.Response {
+        return getAndroidJavaExtensions().get(urlStr, header)
+    }
+
+    fun post(urlStr: String, body: String, headers: Map<String, String>): Connection.Response {
+        return getAndroidJavaExtensions().post(urlStr, body, headers)
+    }
+
+    fun post(urlStr: String, body: String, header: String?): Connection.Response {
+        return getAndroidJavaExtensions().post(urlStr, body, header)
+    }
+
+    fun log(msg: Any?): Any? {
+        logInternal(msg?.toString() ?: "null")
+        return msg
+    }
+
+    private fun getAndroidJavaExtensions(): JsExtensionsDelegate {
+        cachedJavaDelegate?.let { return it }
+        return javaDelegateFactory?.invoke(this)?.also { cachedJavaDelegate = it }
+            ?: throw NoStackTraceException("Android JS extensions are unavailable")
+    }
+
     /**
      * js实现跨域访问,不能删
      */
@@ -901,7 +929,7 @@ class AnalyzeRule(
             analyzeUrl.getStrResponse().body
         }.onFailure {
             coroutineContext.ensureActive()
-            log("ajax(${urlStr}) error\n${it.stackTraceToString()}")
+            logInternal("ajax(${urlStr}) error\n${it.stackTraceToString()}")
             it.printOnDebug()
         }.getOrElse {
             it.stackTraceStr
@@ -941,7 +969,7 @@ class AnalyzeRule(
     /**
      * 调试日志(等价 app 侧 JsExtensionsAndroid.log 的行为)
      */
-    private fun log(msg: String) {
+    private fun logInternal(msg: String) {
         rhinoContextOrNull?.ensureActive()
         DebugBridge.log(source?.getKey(), msg)
         DebugBridge.putDebug(source?.getTag(), msg)
