@@ -11,9 +11,11 @@ import io.legado.app.constant.AppConst
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.http.CookieManager as AppCookieManager
 import java.util.Locale
+import java.util.WeakHashMap
 
 // 以下 header 由 WebView/Cronet 内部管理，手动设置会导致冲突或暴露 WebView 指纹
 private const val TASK_WEBVIEW_PROFILE_PREFIX = "legado_task_"
+private val taskWebViewProfiles = WeakHashMap<WebView, String>()
 
 private val blockedWebViewHeaderNames = setOf(
     // UA 由 settings.userAgentString 控制，不应出现在请求头中
@@ -78,14 +80,18 @@ fun WebView.applyCompatibilitySettings(
             "Task WebView requires WebView multi-profile support"
         }
         val profileName = "$TASK_WEBVIEW_PROFILE_PREFIX${taskCookieScope.substringAfter(':')}"
-        val profile = WebViewCompat.getProfile(this).let { current ->
-            if (current.name == profileName) current
-            else {
+        synchronized(taskWebViewProfiles) {
+            val boundProfile = taskWebViewProfiles[this]
+            if (boundProfile == null) {
                 WebViewCompat.setProfile(this, profileName)
-                WebViewCompat.getProfile(this)
+                taskWebViewProfiles[this] = profileName
+            } else {
+                check(boundProfile == profileName) {
+                    "WebView is already bound to another task profile"
+                }
             }
         }
-        profile.cookieManager
+        WebViewCompat.getProfile(this).cookieManager
     } else {
         CookieManager.getInstance()
     }
