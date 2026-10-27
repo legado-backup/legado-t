@@ -2,6 +2,7 @@ package io.legado.app.model.rss
 
 import io.legado.app.data.entities.RssArticle
 import io.legado.app.model.Debug
+import io.legado.app.utils.NetworkUtils
 import org.xmlpull.v1.XmlPullParser
 import org.xmlpull.v1.XmlPullParserException
 import org.xmlpull.v1.XmlPullParserFactory
@@ -15,7 +16,8 @@ object RssParserDefault {
     fun parseXML(
         sortName: String,
         xml: String,
-        sourceUrl: String
+        sourceUrl: String,
+        baseUrl: String = sourceUrl,
     ): Pair<MutableList<RssArticle>, String?> {
 
         val articleList = mutableListOf<RssArticle>()
@@ -43,7 +45,10 @@ object RssParserDefault {
                     xmlPullParser.name.equals(RSS_ITEM_TITLE, true) ->
                         if (insideItem) currentArticle.title = xmlPullParser.nextText().trim()
                     xmlPullParser.name.equals(RSS_ITEM_LINK, true) ->
-                        if (insideItem) currentArticle.link = xmlPullParser.nextText().trim()
+                        if (insideItem) currentArticle.link = NetworkUtils.getAbsoluteURL(
+                            baseUrl,
+                            xmlPullParser.nextText().trim()
+                        )
                     xmlPullParser.name.equals(RSS_ITEM_THUMBNAIL, true) ->
                         if (insideItem) currentArticle.image =
                             xmlPullParser.getAttributeValue(null, RSS_ITEM_URL)

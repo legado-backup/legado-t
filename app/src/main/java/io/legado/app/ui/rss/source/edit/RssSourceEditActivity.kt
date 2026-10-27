@@ -278,6 +278,7 @@ class RssSourceEditActivity :
             add(EditEntity("sourceGroup", rs.sourceGroup, R.string.source_group))
             add(EditEntity("sourceComment", rs.sourceComment, R.string.comment))
             add(EditEntity("sortUrl", rs.sortUrl, R.string.sort_url))
+            add(EditEntity("searchUrl", rs.searchUrl, R.string.rss_search_url))
             add(EditEntity("loginUrl", rs.loginUrl, R.string.login_url))
             add(EditEntity("loginUi", rs.loginUi, R.string.login_ui))
             add(EditEntity("loginCheckJs", rs.loginCheckJs, R.string.login_check_js))
@@ -353,6 +354,7 @@ class RssSourceEditActivity :
                 "variableComment" -> source.variableComment = it.value
                 "concurrentRate" -> source.concurrentRate = it.value
                 "sortUrl" -> source.sortUrl = it.value
+                "searchUrl" -> source.searchUrl = it.value
                 "jsLib" -> source.jsLib = it.value
             }
         }

@@ -618,6 +618,9 @@ Placeholders:
     <string name="login_check_js">Login check js(loginCheckJs)</string>
     <string name="comment">Source comment(sourceComment)</string>
     <string name="r_search_url">Search url(url)</string>
+    <string name="rss_search_url">Article search URL(searchUrl; use {{key}} for query)</string>
+    <string name="rss_search_hint">Search this feed</string>
+    <string name="rss_search_results">Search results: %s</string>
     <string name="r_find_url">Discover url(url)</string>
     <string name="r_book_list">Book list(bookList)</string>
     <string name="r_book_name">Book title(name)</string>

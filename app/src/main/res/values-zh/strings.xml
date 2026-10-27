@@ -575,6 +575,9 @@ Cron 使用 5 个字段：**分 时 日 月 周**
     <string name="login_check_js">登录检查 JS（loginCheckJs）</string>
     <string name="comment">源注释（sourceComment）</string>
     <string name="r_search_url">搜索地址（url）</string>
+    <string name="rss_search_url">文章搜索地址（searchUrl；关键词用 {{key}}）</string>
+    <string name="rss_search_hint">搜索当前订阅源</string>
+    <string name="rss_search_results">搜索结果：%s</string>
     <string name="r_find_url">发现地址规则（url）</string>
     <string name="r_book_list">书籍列表规则（bookList）</string>
     <string name="r_book_name">书名规则（name）</string>

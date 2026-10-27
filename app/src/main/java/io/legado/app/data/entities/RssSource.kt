@@ -46,6 +46,8 @@ data class RssSource(
     var coverDecodeJs: String? = null,
     /**分类Url**/
     var sortUrl: String? = null,
+    /**搜索Url,支持 AnalyzeUrl 的 key 和 page 规则**/
+    var searchUrl: String? = null,
     /**是否单url源**/
     var singleUrl: Boolean = false,
     /*列表规则*/
@@ -126,6 +128,7 @@ data class RssSource(
                 && equal(loginCheckJs, source.loginCheckJs)
                 && equal(coverDecodeJs, source.coverDecodeJs)
                 && equal(sortUrl, source.sortUrl)
+                && equal(searchUrl, source.searchUrl)
                 && singleUrl == source.singleUrl
                 && articleStyle == source.articleStyle
                 && equal(ruleArticles, source.ruleArticles)

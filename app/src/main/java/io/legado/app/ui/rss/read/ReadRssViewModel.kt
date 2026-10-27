@@ -22,6 +22,7 @@ import io.legado.app.help.http.okHttpClient
 import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.model.rss.Rss
 import io.legado.app.utils.ACache
+import io.legado.app.utils.getJsonObject
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.writeBytes
 import kotlinx.coroutines.Dispatchers.IO
@@ -33,6 +34,7 @@ import kotlin.coroutines.coroutineContext
 class ReadRssViewModel(application: Application) : BaseViewModel(application) {
     var rssSource: RssSource? = null
     var rssArticle: RssArticle? = null
+    private var transientArticleFlag = false
     var tts: TTS? = null
     val contentLiveData = MutableLiveData<String>()
     val urlLiveData = MutableLiveData<AnalyzeUrl>()
@@ -50,9 +52,13 @@ class ReadRssViewModel(application: Application) : BaseViewModel(application) {
                 rssSource?.getHeaderMap() ?: emptyMap()
             }
             if (link != null) {
+                val transientArticle = intent.getBooleanExtra("transientArticle", false)
                 rssStar = appDb.rssStarDao.get(origin, link)
-                rssArticle = rssStar?.toRssArticle() ?: appDb.rssArticleDao.get(origin, link)
+                rssArticle = intent.getJsonObject<RssArticle>("article")
+                    ?: rssStar?.toRssArticle()
+                    ?: appDb.rssArticleDao.get(origin, link)
                 val rssArticle = rssArticle ?: return@execute
+                transientArticleFlag = transientArticle
                 if (!rssArticle.description.isNullOrBlank()) {
                     contentLiveData.postValue(rssArticle.description!!)
                 } else {
@@ -98,7 +104,9 @@ class ReadRssViewModel(application: Application) : BaseViewModel(application) {
         Rss.getContent(viewModelScope, rssArticle, ruleContent, source)
             .onSuccess(IO) { body ->
                 rssArticle.description = body
-                appDb.rssArticleDao.insert(rssArticle)
+                if (!transientArticleFlag) {
+                    appDb.rssArticleDao.insert(rssArticle)
+                }
                 rssStar?.let {
                     it.description = body
                     appDb.rssStarDao.insert(it)

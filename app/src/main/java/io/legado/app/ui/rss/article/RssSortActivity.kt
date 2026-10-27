@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
+import androidx.appcompat.widget.SearchView
 import androidx.activity.viewModels
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
@@ -17,6 +18,7 @@ import io.legado.app.help.source.sortUrls
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.backgroundColor
 import io.legado.app.lib.theme.tabTextColors
+import io.legado.app.lib.theme.toolbarTextColor
 import io.legado.app.ui.login.SourceLoginActivity
 import io.legado.app.ui.rss.source.edit.RssSourceEditActivity
 import io.legado.app.ui.widget.dialog.VariableDialog
@@ -56,12 +58,19 @@ class RssSortActivity : VMBaseActivity<ActivityRssArtivlesBinding, RssSortViewMo
     private val adapter by lazy { TabFragmentPageAdapter(this) }
     private val sortList = mutableListOf<Pair<String, String>>()
     private var fragmentGeneration = 0L
+    private var searchView: SearchView? = null
+    private var searchMode = false
+    private var searchKey = ""
     private val editSourceResult = registerForActivityResult(
         StartActivityContract(RssSourceEditActivity::class.java)
     ) {
         if (it.resultCode == RESULT_OK) {
+            searchMode = false
+            searchKey = ""
+            searchView?.setQuery("", false)
             viewModel.initData(intent) {
                 upFragments()
+                invalidateOptionsMenu()
             }
         }
     }
@@ -76,22 +85,95 @@ class RssSortActivity : VMBaseActivity<ActivityRssArtivlesBinding, RssSortViewMo
         val tabColors = tabTextColors(ColorUtils.isColorLight(backgroundColor))
         binding.tabLayout.setTabTextColors(tabColors.unselected, tabColors.selected)
         viewModel.titleLiveData.observe(this) {
-            binding.titleBar.title = it
+            binding.titleBar.title = if (searchMode) {
+                getString(R.string.rss_search_results, searchKey)
+            } else {
+                it
+            }
         }
+        val restoredSearchKey = savedInstanceState?.getString("rssSearchKey").orEmpty()
         viewModel.initData(intent) {
-            upFragments()
+            if (restoredSearchKey.isNotBlank() && !viewModel.rssSource?.searchUrl.isNullOrBlank()) {
+                startSearch(restoredSearchKey)
+            } else {
+                upFragments()
+            }
+            invalidateOptionsMenu()
         }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        if (searchMode) outState.putString("rssSearchKey", searchKey)
+        super.onSaveInstanceState(outState)
     }
 
     override fun onCompatCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.rss_articles, menu)
+        menu.findItem(R.id.menu_search)?.isVisible =
+            !viewModel.rssSource?.searchUrl.isNullOrBlank()
+        searchView = (menu.findItem(R.id.menu_search).actionView as SearchView).apply {
+            applyTint(toolbarTextColor)
+            queryHint = getString(R.string.rss_search_hint)
+            isSubmitButtonEnabled = true
+            if (searchMode) {
+                isIconified = false
+                setQuery(searchKey, false)
+            }
+            setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+                override fun onQueryTextSubmit(query: String?): Boolean {
+                    val key = query?.trim().orEmpty()
+                    if (key.isNotEmpty()) startSearch(key)
+                    return true
+                }
+
+                override fun onQueryTextChange(newText: String?): Boolean = false
+            })
+            setOnCloseListener {
+                clearSearch()
+                false
+            }
+        }
         return super.onCompatCreateOptionsMenu(menu)
     }
 
     override fun onMenuOpened(featureId: Int, menu: Menu): Boolean {
         menu.findItem(R.id.menu_login)?.isVisible =
             !viewModel.rssSource?.loginUrl.isNullOrBlank()
+        menu.findItem(R.id.menu_search)?.isVisible =
+            !viewModel.rssSource?.searchUrl.isNullOrBlank()
         return super.onMenuOpened(featureId, menu)
+    }
+
+    private fun startSearch(key: String) {
+        if (viewModel.rssSource?.searchUrl.isNullOrBlank()) return
+        searchMode = true
+        searchKey = key
+        searchView?.let {
+            it.isIconified = false
+            it.setQuery(key, false)
+        }
+        binding.tabLayout.gone()
+        binding.titleBar.title = getString(R.string.rss_search_results, key)
+        sortList.clear()
+        sortList.add("" to (viewModel.rssSource?.searchUrl ?: ""))
+        fragmentGeneration++
+        adapter.notifyDataSetChanged()
+    }
+
+    private fun clearSearch() {
+        if (!searchMode) return
+        searchMode = false
+        searchKey = ""
+        searchView?.setQuery("", false)
+        lifecycleScope.launch {
+            val tabs = viewModel.sortTabs() ?: viewModel.rssSource?.sortUrls().orEmpty()
+            sortList.clear()
+            sortList.addAll(tabs)
+            if (sortList.size == 1) binding.tabLayout.gone() else binding.tabLayout.visible()
+            viewModel.rssSource?.sourceName?.let { binding.titleBar.title = it }
+            fragmentGeneration++
+            adapter.notifyDataSetChanged()
+        }
     }
 
     override fun onCompatOptionsItemSelected(item: MenuItem): Boolean {
@@ -129,6 +211,12 @@ class RssSortActivity : VMBaseActivity<ActivityRssArtivlesBinding, RssSortViewMo
 
     private fun upFragments() {
         lifecycleScope.launch {
+            if (searchMode) {
+                binding.tabLayout.gone()
+                fragmentGeneration++
+                adapter.notifyDataSetChanged()
+                return@launch
+            }
             // 深链指定的分类优先, 未指定时才展示订阅源的完整分类列表
             val tabs = viewModel.sortTabs() ?: viewModel.rssSource?.sortUrls()
             tabs?.let {
@@ -190,7 +278,11 @@ class RssSortActivity : VMBaseActivity<ActivityRssArtivlesBinding, RssSortViewMo
 
         override fun createFragment(position: Int): Fragment {
             val sort = sortList[position]
-            return RssArticlesFragment(sort.first, sort.second)
+            return if (searchMode) {
+                RssArticlesFragment(sort.first, sort.second, searchKey)
+            } else {
+                RssArticlesFragment(sort.first, sort.second)
+            }
         }
     }
 

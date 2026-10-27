@@ -25,7 +25,8 @@ object RssParserByRule {
         redirectUrl: String,
         body: String?,
         rssSource: RssSource,
-        ruleData: RuleData
+        ruleData: RuleData,
+        baseUrl: String = sortUrl,
     ): Pair<MutableList<RssArticle>, String?> {
         val sourceUrl = rssSource.sourceUrl
         var nextUrl: String? = null
@@ -39,12 +40,12 @@ object RssParserByRule {
         var ruleArticles = rssSource.ruleArticles
         if (ruleArticles.isNullOrBlank()) {
             Debug.log(sourceUrl, "⇒列表规则为空, 使用默认规则解析")
-            return RssParserDefault.parseXML(sortName, body, sourceUrl)
+            return RssParserDefault.parseXML(sortName, body, sourceUrl, baseUrl)
         } else {
             val articleList = mutableListOf<RssArticle>()
             val analyzeRule = AnalyzeRule(ruleData, rssSource)
             analyzeRule.setCoroutineContext(coroutineContext)
-            analyzeRule.setContent(body).setBaseUrl(sortUrl)
+            analyzeRule.setContent(body).setBaseUrl(baseUrl)
             analyzeRule.setRedirectUrl(redirectUrl)
             var reverse = false
             if (ruleArticles.startsWith("-")) {
@@ -61,7 +62,7 @@ object RssParserByRule {
                 } else {
                     nextUrl = analyzeRule.getString(rssSource.ruleNextPage)
                     if (nextUrl.isNotEmpty()) {
-                        nextUrl = NetworkUtils.getAbsoluteURL(sortUrl, nextUrl)
+                        nextUrl = NetworkUtils.getAbsoluteURL(baseUrl, nextUrl)
                     }
                 }
                 Debug.log(sourceUrl, "└$nextUrl")
@@ -74,7 +75,7 @@ object RssParserByRule {
             val variable = ruleData.getVariable()
             for ((index, item) in collections.withIndex()) {
                 getItem(
-                    sourceUrl, item, analyzeRule, variable, index == 0,
+                    sourceUrl, baseUrl, item, analyzeRule, variable, index == 0,
                     ruleTitle, rulePubDate, ruleDescription, ruleImage, ruleLink
                 )?.let {
                     it.sort = sortName
@@ -91,6 +92,7 @@ object RssParserByRule {
 
     private fun getItem(
         sourceUrl: String,
+        baseUrl: String,
         item: Any,
         analyzeRule: AnalyzeRule,
         variable: String?,
@@ -122,7 +124,7 @@ object RssParserByRule {
         rssArticle.image = analyzeRule.getString(ruleImage, isUrl = true)
         Debug.log(sourceUrl, "└${rssArticle.image}", log)
         Debug.log(sourceUrl, "┌获取文章链接", log)
-        rssArticle.link = NetworkUtils.getAbsoluteURL(sourceUrl, analyzeRule.getString(ruleLink))
+        rssArticle.link = NetworkUtils.getAbsoluteURL(baseUrl, analyzeRule.getString(ruleLink))
         Debug.log(sourceUrl, "└${rssArticle.link}", log)
         if (rssArticle.title.isBlank()) {
             return null

@@ -24,10 +24,11 @@ object Rss {
         sortUrl: String,
         rssSource: RssSource,
         page: Int,
-        context: CoroutineContext = Dispatchers.IO
+        context: CoroutineContext = Dispatchers.IO,
+        key: String? = null,
     ): Coroutine<Pair<MutableList<RssArticle>, String?>> {
         return Coroutine.async(scope, context) {
-            getArticlesAwait(sortName, sortUrl, rssSource, page)
+            getArticlesAwait(sortName, sortUrl, rssSource, page, key)
         }
     }
 
@@ -36,19 +37,69 @@ object Rss {
         sortUrl: String,
         rssSource: RssSource,
         page: Int,
+        key: String? = null,
+        baseUrl: String = sortUrl,
+        checkLogin: Boolean = false,
     ): Pair<MutableList<RssArticle>, String?> {
         val ruleData = RuleData()
         val analyzeUrl = AnalyzeUrl(
             sortUrl,
+            key = key,
             page = page,
+            baseUrl = baseUrl,
             source = rssSource,
             ruleData = ruleData,
             coroutineContext = coroutineContext,
-            hasLoginHeader = false
+            hasLoginHeader = checkLogin
         )
-        val res = analyzeUrl.getStrResponseAwait()
+        var res = analyzeUrl.getStrResponseAwait()
+        if (checkLogin) {
+            rssSource.loginCheckJs?.takeIf { it.isNotBlank() }?.let {
+                res = analyzeUrl.evalJS(it, res) as StrResponse
+            }
+        }
         checkRedirect(rssSource, res)
-        return RssParserByRule.parseXML(sortName, sortUrl, res.url, res.body, rssSource, ruleData)
+        return RssParserByRule.parseXML(
+            sortName,
+            sortUrl,
+            res.url,
+            res.body,
+            rssSource,
+            ruleData,
+            baseUrl = res.url,
+        )
+    }
+
+    fun searchArticles(
+        scope: CoroutineScope,
+        sortName: String,
+        searchUrl: String,
+        key: String,
+        rssSource: RssSource,
+        page: Int,
+        context: CoroutineContext = Dispatchers.IO,
+    ): Coroutine<Pair<MutableList<RssArticle>, String?>> {
+        return Coroutine.async(scope, context) {
+            searchArticlesAwait(sortName, searchUrl, key, rssSource, page)
+        }
+    }
+
+    suspend fun searchArticlesAwait(
+        sortName: String,
+        searchUrl: String,
+        key: String,
+        rssSource: RssSource,
+        page: Int,
+    ): Pair<MutableList<RssArticle>, String?> {
+        return getArticlesAwait(
+            sortName = sortName,
+            sortUrl = searchUrl,
+            rssSource = rssSource,
+            page = page,
+            key = key,
+            baseUrl = rssSource.sourceUrl,
+            checkLogin = true,
+        )
     }
 
     fun getContent(

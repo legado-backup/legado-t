@@ -25,6 +25,7 @@ import io.legado.app.ui.widget.recycler.LoadMoreView
 import io.legado.app.ui.widget.recycler.VerticalDivider
 import io.legado.app.utils.applyNavigationBarPadding
 import io.legado.app.utils.setEdgeEffectColor
+import io.legado.app.utils.putJson
 import io.legado.app.utils.startActivity
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import kotlinx.coroutines.Dispatchers.IO
@@ -44,6 +45,15 @@ class RssArticlesFragment() : VMBaseFragment<RssArticlesViewModel>(R.layout.frag
         }
     }
 
+    constructor(sortName: String, sortUrl: String, searchKey: String) : this() {
+        arguments = Bundle().apply {
+            putString("sortName", sortName)
+            putString("sortUrl", sortUrl)
+            putBoolean("searchMode", true)
+            putString("searchKey", searchKey)
+        }
+    }
+
     private val binding by viewBinding(FragmentRssArticlesBinding::bind)
     private val activityViewModel by activityViewModels<RssSortViewModel>()
     override val viewModel by viewModels<RssArticlesViewModel>()
@@ -58,6 +68,9 @@ class RssArticlesFragment() : VMBaseFragment<RssArticlesViewModel>(R.layout.frag
         LoadMoreView(requireContext())
     }
     private var articlesFlowJob: Job? = null
+    private var loadError: String? = null
+    private val isSearchMode: Boolean
+        get() = viewModel.isSearchMode
     override val isGridLayout: Boolean
         get() = activityViewModel.isGridLayout
 
@@ -65,6 +78,11 @@ class RssArticlesFragment() : VMBaseFragment<RssArticlesViewModel>(R.layout.frag
         viewModel.init(arguments)
         initView()
         initData()
+        if (isSearchMode) {
+            viewModel.searchArticlesLiveData.observe(viewLifecycleOwner) {
+                adapter.setItems(it)
+            }
+        }
     }
 
     private fun initView() = binding.run {
@@ -88,6 +106,7 @@ class RssArticlesFragment() : VMBaseFragment<RssArticlesViewModel>(R.layout.frag
             ViewLoadMoreBinding.bind(loadMoreView)
         }
         refreshLayout.setOnRefreshListener {
+            loadMoreView.reset()
             loadArticles()
         }
         recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
@@ -108,6 +127,7 @@ class RssArticlesFragment() : VMBaseFragment<RssArticlesViewModel>(R.layout.frag
     }
 
     private fun initData() {
+        if (isSearchMode) return
         val rssUrl = activityViewModel.url ?: return
         articlesFlowJob?.cancel()
         articlesFlowJob = viewLifecycleOwner.lifecycleScope.launch {
@@ -137,11 +157,18 @@ class RssArticlesFragment() : VMBaseFragment<RssArticlesViewModel>(R.layout.frag
 
     override fun observeLiveBus() {
         viewModel.loadErrorLiveData.observe(viewLifecycleOwner) {
-            loadMoreView.error(it)
+            loadError = it.takeIf(String::isNotBlank)
+            if (loadError == null) {
+                loadMoreView.reset()
+            } else {
+                loadMoreView.error(loadError)
+            }
         }
         viewModel.loadFinallyLiveData.observe(viewLifecycleOwner) { hasMore ->
             binding.refreshLayout.isRefreshing = false
-            if (!hasMore) {
+            if (hasMore) {
+                loadMoreView.reset()
+            } else {
                 loadMoreView.noMore()
             }
         }
@@ -153,6 +180,10 @@ class RssArticlesFragment() : VMBaseFragment<RssArticlesViewModel>(R.layout.frag
             putExtra("title", rssArticle.title)
             putExtra("origin", rssArticle.origin)
             putExtra("link", rssArticle.link)
+            if (isSearchMode) {
+                putJson("article", rssArticle)
+                putExtra("transientArticle", true)
+            }
         }
     }
 }

@@ -2,6 +2,7 @@ package io.legado.app
 
 import androidx.room.Room
 import androidx.room.testing.MigrationTestHelper
+import androidx.sqlite.db.SimpleSQLiteQuery
 import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -37,6 +38,29 @@ class MigrationTest {
             .build()
         try {
             db.openHelper.writableDatabase
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
+    fun migrate94AddsOptionalRssSearchUrlWithoutChangingExistingSources() {
+        helper.createDatabase(testDb, 94).apply {
+            execSQL(
+                "INSERT INTO rssSources(sourceUrl, sourceName, sourceIcon, enabled, singleUrl) " +
+                    "VALUES('https://rss.test/feed', 'RSS', '', 1, 0)"
+            )
+            close()
+        }
+
+        val db = Room.databaseBuilder(context, AppDatabase::class.java, testDb).build()
+        try {
+            db.openHelper.writableDatabase
+            db.query(SimpleSQLiteQuery("SELECT sourceUrl, searchUrl FROM rssSources")).use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("https://rss.test/feed", cursor.getString(0))
+                assertTrue(cursor.isNull(1))
+            }
         } finally {
             db.close()
         }
