@@ -14,6 +14,8 @@ import io.legado.app.help.JsExtensionsAndroid
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.crypto.SymmetricCryptoAndroid
 import io.legado.app.help.http.CookieStore
+import io.legado.app.help.http.TaskCookieContext
+import io.legado.app.help.http.TaskCookieStore
 import io.legado.app.model.SharedJsScope
 import io.legado.app.model.jsSource.JsSourceEngine
 import io.legado.app.model.login.LoginUiV2
@@ -382,8 +384,16 @@ interface BaseSource : JsExtensionsAndroid, SourceContract {
             bindings["java"] = this
             bindings["source"] = this
             bindings["baseUrl"] = getKey()
-            bindings["cookie"] = CookieStore
+            val taskScope = cookieScopeKey
+                ?.takeIf { enabledCookieJar == true }
+                ?.let(io.legado.app.help.http.CookieBridge::taskCookieScopeValue)
+            bindings["cookie"] = taskScope?.let {
+                TaskCookieStore(it, getKey())
+            } ?: CookieStore
             bindings["cache"] = CacheManager
+            taskScope?.let {
+                bindings["taskCookieScope"] = it
+            }
             bindings.apply(bindingsConfig)
         }
         val sharedScope = getShareScope(null) ?: SharedJsScope.getCryptoScope(null)

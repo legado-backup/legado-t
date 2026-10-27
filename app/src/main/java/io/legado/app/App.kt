@@ -52,6 +52,8 @@ import io.legado.app.help.config.ThemeConfig.applyDayNightInit
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.help.http.CookieBridge
 import io.legado.app.help.http.CookieStore
+import io.legado.app.help.http.TaskCookieContext
+import io.legado.app.help.http.TaskCookieStore
 import io.legado.app.help.http.Cronet
 import io.legado.app.help.http.HttpBridge
 import io.legado.app.help.http.ObsoleteUrlFactory
@@ -124,6 +126,13 @@ class App : Application() {
             AppLog.putDebug(msg, tag = tag ?: "源")
         }
         CookieBridge.store = CookieStore
+        CookieBridge.taskScopeProvider = TaskCookieContext::currentHeaderValue
+        CookieBridge.taskSourceKeyProvider = {
+            TaskCookieContext.currentTaskKey()?.let { "auto_task:$it" }
+        }
+        CookieBridge.taskCookieStoreProvider = { scope, sourceKey ->
+            TaskCookieStore(scope, sourceKey)
+        }
         HttpBridge.proxyClient = { proxy -> getProxyClient(proxy) }
         JsScopeBridge.loadAsset = { path ->
             runCatching {

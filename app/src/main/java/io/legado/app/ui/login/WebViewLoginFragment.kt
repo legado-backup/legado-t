@@ -42,6 +42,8 @@ class WebViewLoginFragment : BaseFragment(R.layout.fragment_web_view_login) {
     private val viewModel by activityViewModels<SourceLoginViewModel>()
 
     private var checking = false
+    private var webViewCookieManager: CookieManager? = null
+    private var webViewDestroyed = false
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
         binding.root.setBackgroundColor(requireContext().backgroundColor)
@@ -80,6 +82,18 @@ class WebViewLoginFragment : BaseFragment(R.layout.fragment_web_view_login) {
     @SuppressLint("SetJavaScriptEnabled")
     private fun initWebView(source: BaseSource) {
         binding.progressBar.fontColor = accentColor
+        val taskScope = source.takeIf { it.enabledCookieJar == true }
+            ?.cookieScopeKey
+            ?.let(io.legado.app.help.http.CookieBridge::taskCookieScopeValue)
+        webViewCookieManager = runCatching {
+            binding.webView.applyCompatibilitySettings(
+                taskCookieScope = taskScope,
+                applyStoredCookies = false
+            )
+        }.getOrElse {
+            binding.root.longSnackbar(it.message ?: "Task WebView profile unavailable")
+            return
+        }
         binding.webView.settings.apply {
             mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
             domStorageEnabled = true
@@ -89,17 +103,14 @@ class WebViewLoginFragment : BaseFragment(R.layout.fragment_web_view_login) {
             javaScriptEnabled = true
             displayZoomControls = false
         }
-        val cookieManager = CookieManager.getInstance()
         binding.webView.webViewClient = object : WebViewClient() {
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
-                val cookie = cookieManager.getCookie(url)
-                CookieStore.setCookie(source.getKey(), cookie)
+                savePageCookie(source, webViewCookieManager ?: CookieManager.getInstance(), url)
                 super.onPageStarted(view, url, favicon)
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
-                val cookie = cookieManager.getCookie(url)
-                CookieStore.setCookie(source.getKey(), cookie)
+                savePageCookie(source, webViewCookieManager ?: CookieManager.getInstance(), url)
                 if (checking) {
                     activity?.finish()
                 }
@@ -154,14 +165,46 @@ class WebViewLoginFragment : BaseFragment(R.layout.fragment_web_view_login) {
         loadUrl(source)
     }
 
+    private fun savePageCookie(
+        source: BaseSource,
+        cookieManager: CookieManager,
+        url: String?
+    ) {
+        if (url.isNullOrBlank()) return
+        val cookie = cookieManager.getCookie(url) ?: return
+        val scope = source.cookieScopeKey
+        if (scope != null && source.enabledCookieJar == true) {
+            CookieStore.setTaskCookie(scope, url, cookie)
+        } else {
+            CookieStore.setCookie(source.getKey(), cookie)
+        }
+    }
+
     private fun loadUrl(source: BaseSource) {
         val loginUrl = source.loginUrl ?: return
         val absoluteUrl = NetworkUtils.getAbsoluteURL(source.getKey(), loginUrl)
-        binding.webView.applyCompatibilitySettings(absoluteUrl, viewModel.headerMap)
-        binding.webView.loadUrl(absoluteUrl, viewModel.headerMap.toWebViewRequestHeaders())
+        val taskScope = source.takeIf { it.enabledCookieJar == true }
+            ?.cookieScopeKey
+            ?.let(io.legado.app.help.http.CookieBridge::taskCookieScopeValue)
+        webViewCookieManager = binding.webView.applyCompatibilitySettings(
+            absoluteUrl,
+            viewModel.headerMap,
+            applyStoredCookies = true,
+            taskCookieScope = taskScope,
+            onCookiesApplied = {
+                if (!webViewDestroyed) {
+                    binding.webView.loadUrl(
+                        absoluteUrl,
+                        viewModel.headerMap.toWebViewRequestHeaders()
+                    )
+                }
+            }
+        )
     }
 
     override fun onDestroy() {
+        webViewDestroyed = true
+        webViewCookieManager?.flush()
         super.onDestroy()
         binding.webView.destroy()
     }

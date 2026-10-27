@@ -51,11 +51,24 @@ class BackstageWebView(
     private val javaScript: String? = null,
     private val delayTime: Long = 0,
     private val source: BaseSource? = null,
+    private val explicitTaskCookieScope: String? = null,
 ) {
 
     private val mHandler = Handler(Looper.getMainLooper())
     private var callback: Callback? = null
     private var mWebView: WebView? = null
+    private var webViewCookieManager: CookieManager? = null
+    private var destroyed = false
+
+    private val taskCookieScope: String?
+        get() = explicitTaskCookieScope
+            ?: if (source == null) {
+                TaskCookieContext.currentHeaderValue()
+            } else {
+                source.takeIf { it.enabledCookieJar == true }
+                    ?.cookieScopeKey
+                    ?.let(CookieBridge::taskCookieScopeValue)
+            }
 
     suspend fun getStrResponse(): StrResponse = withTimeout(60000L) {
         suspendCancellableCoroutine { block ->
@@ -92,36 +105,54 @@ class BackstageWebView(
 
     @Throws(AndroidRuntimeException::class)
     private fun load() {
-        val webView = createWebView()
-        mWebView = webView
-        try {
-            when {
-                !html.isNullOrEmpty() -> if (url.isNullOrEmpty()) {
-                    webView.loadData(html, "text/html", getEncoding())
-                } else {
-                    webView.loadDataWithBaseURL(url, html, "text/html", getEncoding(), url)
-                }
+        val webView = createWebView {
+            if (destroyed) return@createWebView
+            try {
+                when {
+                    !html.isNullOrEmpty() -> if (url.isNullOrEmpty()) {
+                        it.loadData(html, "text/html", getEncoding())
+                    } else {
+                        it.loadDataWithBaseURL(url, html, "text/html", getEncoding(), url)
+                    }
 
-                else -> if (headerMap == null) {
-                    webView.loadUrl(url!!)
-                } else {
-                    webView.loadUrl(url!!, headerMap.toWebViewRequestHeaders())
+                    else -> if (headerMap == null) {
+                        it.loadUrl(url!!)
+                    } else {
+                        it.loadUrl(url!!, headerMap.toWebViewRequestHeaders())
+                    }
                 }
+            } catch (e: Exception) {
+                callback?.onError(e)
             }
-        } catch (e: Exception) {
-            callback?.onError(e)
         }
+        mWebView = webView
     }
 
     @SuppressLint("SetJavaScriptEnabled", "JavascriptInterface")
-    private fun createWebView(): WebView {
+    private fun createWebView(onCookiesApplied: (WebView) -> Unit): WebView {
         val webView = WebView(appCtx)
+        mWebView = webView
+        var webViewReady = false
+        var cookiesApplied = false
+        val loadWhenReady = {
+            if (webViewReady) {
+                onCookiesApplied(webView)
+            } else {
+                cookiesApplied = true
+            }
+        }
+        webViewCookieManager = webView.applyCompatibilitySettings(
+            url,
+            headerMap,
+            applyStoredCookies = true,
+            taskCookieScope = taskCookieScope,
+            onCookiesApplied = loadWhenReady
+        )
         val settings = webView.settings
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true
         settings.blockNetworkImage = true
         settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-        webView.applyCompatibilitySettings(url, headerMap)
         source?.let { SourceWebBridge.install(webView, it) }
         if (!tag.isNullOrBlank()) {
             webView.webChromeClient = object : WebChromeClient() {
@@ -138,13 +169,17 @@ class BackstageWebView(
         } else {
             webView.webViewClient = SnifferWebClient()
         }
+        webViewReady = true
+        if (cookiesApplied) onCookiesApplied(webView)
         return webView
     }
 
     private fun destroy() {
+        destroyed = true
         mWebView?.let { SourceWebBridge.uninstall(it) }
         mWebView?.destroy()
         mWebView = null
+        webViewCookieManager?.flush()
     }
 
     private fun getJs(): String {
@@ -157,10 +192,14 @@ class BackstageWebView(
     }
 
     private fun setCookie(url: String) {
-        tag?.let {
-            Coroutine.async(executeContext = IO) {
-                val cookie = CookieManager.getInstance().getCookie(url)
-                CookieStore.setCookie(it, cookie)
+        val scope = taskCookieScope
+        if (scope == null && tag == null) return
+        Coroutine.async(executeContext = IO) {
+            val cookie = webViewCookieManager?.getCookie(url) ?: return@async
+            if (scope != null) {
+                CookieStore.setTaskCookie(scope, url, cookie)
+            } else {
+                CookieStore.setCookie(tag!!, cookie)
             }
         }
     }

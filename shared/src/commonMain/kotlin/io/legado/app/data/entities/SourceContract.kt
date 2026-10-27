@@ -22,6 +22,9 @@ interface SourceContract {
     /** 启用cookieJar */
     val enabledCookieJar: Boolean?
 
+    /** 隔离 CookieJar 的逻辑作用域；普通书源为 null */
+    val cookieScopeKey: String? get() = null
+
     /** js库 */
     val jsLib: String?
 

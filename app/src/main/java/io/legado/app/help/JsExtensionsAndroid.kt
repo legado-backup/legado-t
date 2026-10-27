@@ -17,7 +17,9 @@ import io.legado.app.help.crypto.hexToByteArray
 import io.legado.app.help.crypto.toHexString
 import io.legado.app.help.http.BackstageWebView
 import io.legado.app.help.http.CookieManager.cookieJarHeader
+import io.legado.app.help.http.CookieManager.taskCookieScopeHeader
 import io.legado.app.help.http.CookieStore
+import io.legado.app.help.http.TaskCookieContext
 import io.legado.app.help.http.SSLHelper
 import io.legado.app.help.http.StrResponse
 import io.legado.app.help.source.SourceVerificationHelp
@@ -310,7 +312,17 @@ interface JsExtensionsAndroid : JsExtensionsDelegate, JsEncodeUtilsAndroid {
     }
 
     fun getCookie(tag: String, key: String?): String {
-        return if (key != null) {
+        val source = getSource()
+        val scope = when {
+            source?.enabledCookieJar == true -> source.cookieScopeKey
+                ?.let(io.legado.app.help.http.CookieBridge::taskCookieScopeValue)
+            source == null -> TaskCookieContext.currentHeaderValue()
+            else -> null
+        }
+        return if (scope != null) {
+            val cookie = CookieStore.getCookie(scope, tag)
+            if (key == null) cookie else CookieStore.cookieToMap(cookie)[key].orEmpty()
+        } else if (key != null) {
             CookieStore.getKey(tag, key)
         } else {
             CookieStore.getCookie(tag)
@@ -375,13 +387,47 @@ interface JsExtensionsAndroid : JsExtensionsDelegate, JsEncodeUtilsAndroid {
         return path.substring(FileUtils.getCachePath().length)
     }
 
+    private fun cookieJarHeaders(headers: Map<String, String>): Triple<Map<String, String>, String?, Boolean> {
+        val source = getSource()
+        val scope = when {
+            source?.enabledCookieJar == true -> source.cookieScopeKey
+                ?.let(io.legado.app.help.http.CookieBridge::taskCookieScopeValue)
+            source == null -> TaskCookieContext.currentHeaderValue()
+            else -> null
+        }
+        val url = headers.entries
+            .firstOrNull { it.key.equals("__url", ignoreCase = true) }
+            ?.value
+        val clean = headers.entries
+            .filterNot {
+                it.key.equals("__url", ignoreCase = true) ||
+                    it.key.equals(cookieJarHeader, ignoreCase = true) ||
+                    it.key.equals(taskCookieScopeHeader, ignoreCase = true)
+            }
+            .associate { it.key to it.value }
+            .toMutableMap()
+        val enabled = source?.enabledCookieJar == true || scope != null
+        if (!enabled) return Triple(clean, null, false)
+        val cookie = url?.let {
+            if (scope != null) CookieStore.getCookie(scope, it) else CookieStore.getCookie(it)
+        }
+        val explicitCookie = clean.entries
+            .firstOrNull { it.key.equals("Cookie", ignoreCase = true) }
+            ?.value
+        io.legado.app.help.http.CookieManager.mergeCookies(cookie, explicitCookie)?.let {
+            clean.keys
+                .filter { key -> key.equals("Cookie", ignoreCase = true) }
+                .forEach(clean::remove)
+            clean["Cookie"] = it
+        }
+        return Triple(clean, scope, true)
+    }
+
     /**
      * js实现重定向拦截,网络访问get
      */
     override fun get(urlStr: String, headers: Map<String, String>): Connection.Response {
-        val requestHeaders = if (getSource()?.enabledCookieJar == true) {
-            headers.toMutableMap().apply { put(cookieJarHeader, "1") }
-        } else headers
+        val (requestHeaders, taskScope, cookieJarEnabled) = cookieJarHeaders(headers + ("__url" to urlStr))
         val rateLimiter = ConcurrentRateLimiter(getSource())
         val response = rateLimiter.withLimitBlocking {
             rhinoContext.ensureActive()
@@ -392,6 +438,9 @@ interface JsExtensionsAndroid : JsExtensionsDelegate, JsEncodeUtilsAndroid {
                 .headers(requestHeaders)
                 .method(Connection.Method.GET)
                 .execute()
+        }
+        if (cookieJarEnabled) {
+            io.legado.app.help.http.CookieManager.saveResponse(response, taskScope)
         }
         return response
     }
@@ -408,9 +457,7 @@ interface JsExtensionsAndroid : JsExtensionsDelegate, JsEncodeUtilsAndroid {
      * js实现重定向拦截,网络访问head,不返回Response Body更省流量
      */
     fun head(urlStr: String, headers: Map<String, String>): Connection.Response {
-        val requestHeaders = if (getSource()?.enabledCookieJar == true) {
-            headers.toMutableMap().apply { put(cookieJarHeader, "1") }
-        } else headers
+        val (requestHeaders, taskScope, cookieJarEnabled) = cookieJarHeaders(headers + ("__url" to urlStr))
         val rateLimiter = ConcurrentRateLimiter(getSource())
         val response = rateLimiter.withLimitBlocking {
             rhinoContext.ensureActive()
@@ -421,6 +468,9 @@ interface JsExtensionsAndroid : JsExtensionsDelegate, JsEncodeUtilsAndroid {
                 .headers(requestHeaders)
                 .method(Connection.Method.HEAD)
                 .execute()
+        }
+        if (cookieJarEnabled) {
+            io.legado.app.help.http.CookieManager.saveResponse(response, taskScope)
         }
         return response
     }
@@ -437,9 +487,7 @@ interface JsExtensionsAndroid : JsExtensionsDelegate, JsEncodeUtilsAndroid {
      * 网络访问post
      */
     override fun post(urlStr: String, body: String, headers: Map<String, String>): Connection.Response {
-        val requestHeaders = if (getSource()?.enabledCookieJar == true) {
-            headers.toMutableMap().apply { put(cookieJarHeader, "1") }
-        } else headers
+        val (requestHeaders, taskScope, cookieJarEnabled) = cookieJarHeaders(headers + ("__url" to urlStr))
         val rateLimiter = ConcurrentRateLimiter(getSource())
         val response = rateLimiter.withLimitBlocking {
             rhinoContext.ensureActive()
@@ -451,6 +499,9 @@ interface JsExtensionsAndroid : JsExtensionsDelegate, JsEncodeUtilsAndroid {
                 .headers(requestHeaders)
                 .method(Connection.Method.POST)
                 .execute()
+        }
+        if (cookieJarEnabled) {
+            io.legado.app.help.http.CookieManager.saveResponse(response, taskScope)
         }
         return response
     }

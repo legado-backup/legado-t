@@ -17,6 +17,8 @@ interface CookieManagerInterface {
      */
     fun getCookie(url: String): String
 
+    fun getCookie(scope: String, url: String): String = getCookie(url)
+
     /**
      * 移除cookie
      */

@@ -5,10 +5,12 @@ import io.legado.app.constant.PreferKey
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.BookSource
 import io.legado.app.help.CacheManager
+import io.legado.app.help.http.CookieStore
 import io.legado.app.service.AutoTaskService
 import io.legado.app.utils.GSON
 import io.legado.app.utils.fromJsonArray
 import io.legado.app.utils.getPrefBoolean
+import io.legado.app.utils.deleteTaskWebViewProfile
 import io.legado.app.utils.mergeFilteredOrder
 import io.legado.app.utils.stackTraceStr
 import splitties.init.appCtx
@@ -115,6 +117,7 @@ object AutoTask {
             bookSourceUrl = "${SOURCE_KEY}:${task.id}",
             bookSourceName = task.name
         ).apply {
+            cookieScopeKey = task.id
             jsLib = task.jsLib
             header = task.header
             concurrentRate = task.concurrentRate
@@ -168,7 +171,13 @@ object AutoTask {
 
     @Synchronized
     fun delete(vararg ids: String) {
-        ids.forEach { appDb.autoTaskRuleDao.delete(it) }
+        ids.forEach {
+            CookieStore.removeTaskCookies(it)
+            deleteTaskWebViewProfile(
+                io.legado.app.help.http.CookieBridge.taskCookieScopeValue(it)
+            )
+            appDb.autoTaskRuleDao.delete(it)
+        }
         refreshSchedule()
     }
 

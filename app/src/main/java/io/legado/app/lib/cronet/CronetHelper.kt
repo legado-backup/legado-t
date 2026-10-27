@@ -6,6 +6,7 @@ package io.legado.app.lib.cronet
 import androidx.annotation.Keep
 import io.legado.app.constant.AppLog
 import io.legado.app.help.http.CookieManager.cookieJarHeader
+import io.legado.app.help.http.CookieManager.taskCookieScopeHeader
 import io.legado.app.help.http.SSLHelper
 import io.legado.app.help.http.okHttpClient
 import io.legado.app.help.http.unsafeTrustManagerExtensions
@@ -83,7 +84,9 @@ fun buildRequest(request: Request, callback: UrlRequest.Callback): UrlRequest? {
         setHttpMethod(request.method)//设置
         allowDirectExecutor()
         headers.forEachIndexed { index, _ ->
-            if (headers.name(index) == cookieJarHeader) return@forEachIndexed
+            if (headers.name(index).equals(cookieJarHeader, true) ||
+                headers.name(index).equals(taskCookieScopeHeader, true)
+            ) return@forEachIndexed
             addHeader(headers.name(index), headers.value(index))
         }
         if (requestBody != null) {

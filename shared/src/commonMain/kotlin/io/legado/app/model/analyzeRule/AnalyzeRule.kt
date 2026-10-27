@@ -828,7 +828,21 @@ class AnalyzeRule(
         val pageValue = get("page").toIntOrNull() ?: 1
         val bindings = buildScriptBindings { bindings ->
             bindings["java"] = getJavaDelegate()
-            bindings["cookie"] = CookieBridge.store
+            val taskScope = when {
+                source?.enabledCookieJar == true -> source.cookieScopeKey
+                    ?.let(CookieBridge::taskCookieScopeValue)
+                source == null -> CookieBridge.taskScopeProvider?.invoke()
+                    ?.takeIf { it.startsWith(CookieBridge.taskCookieScopePrefix) }
+                else -> null
+            }
+            bindings["cookie"] = if (taskScope != null) {
+                CookieBridge.taskCookieStoreProvider?.invoke(
+                    taskScope,
+                    source?.getKey() ?: CookieBridge.taskSourceKeyProvider?.invoke().orEmpty()
+                )
+            } else {
+                CookieBridge.store
+            }
             bindings["cache"] = CacheManager
             bindings["source"] = source
             bindings["book"] = book

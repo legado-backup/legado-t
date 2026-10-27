@@ -16,6 +16,7 @@ import io.legado.app.help.JsExtensions
 import io.legado.app.help.JsExtensionsDelegate
 import io.legado.app.help.http.CookieBridge
 import io.legado.app.help.http.CookieBridge.cookieJarHeader
+import io.legado.app.help.http.CookieBridge.taskCookieScopePrefix
 import io.legado.app.help.http.HttpBridge
 import io.legado.app.help.http.RequestMethod
 import io.legado.app.help.http.StrResponse
@@ -102,7 +103,16 @@ class AnalyzeUrl(
     private var retry: Int = 0
     private var useWebView: Boolean = false
     private var webJs: String? = null
-    private val enabledCookieJar = source?.enabledCookieJar == true
+    private val taskCookieScope = when {
+        source?.enabledCookieJar == true -> source.cookieScopeKey
+            ?.let(CookieBridge::taskCookieScopeValue)
+        source == null -> CookieBridge.taskScopeProvider?.invoke()?.takeIf {
+            it.startsWith(taskCookieScopePrefix)
+        }
+        else -> null
+    }
+    private val enabledCookieJar = source?.enabledCookieJar == true ||
+        (source == null && taskCookieScope != null)
     private val domain: String
     private var webViewDelayTime: Long = 0
     private val concurrentRateLimiter = ConcurrentRateLimiter(source)
@@ -379,7 +389,22 @@ class AnalyzeUrl(
         val bindings = buildScriptBindings { bindings ->
             bindings["java"] = getJavaDelegate()
             bindings["baseUrl"] = baseUrl
-            bindings["cookie"] = CookieBridge.store
+            val taskScope = when {
+                source?.enabledCookieJar == true -> source.cookieScopeKey
+                    ?.let(CookieBridge::taskCookieScopeValue)
+                source == null -> CookieBridge.taskScopeProvider?.invoke()?.takeIf {
+                    it.startsWith(taskCookieScopePrefix)
+                }
+                else -> null
+            }
+            bindings["cookie"] = if (taskScope != null) {
+                CookieBridge.taskCookieStoreProvider?.invoke(
+                    taskScope,
+                    source?.getKey() ?: CookieBridge.taskSourceKeyProvider?.invoke().orEmpty()
+                )
+            } else {
+                CookieBridge.store
+            }
             bindings["cache"] = CacheManager
             bindings["page"] = pageValue
             bindings["key"] = key
@@ -481,6 +506,7 @@ class AnalyzeUrl(
                             headerMap = headerMap,
                             delayTime = webViewDelayTime,
                             source = source,
+                            taskCookieScope = taskCookieScope,
                         )
                     }
 
@@ -493,6 +519,7 @@ class AnalyzeUrl(
                         headerMap = headerMap,
                         delayTime = webViewDelayTime,
                         source = source,
+                        taskCookieScope = taskCookieScope,
                     )
                 }
             } else {
@@ -689,16 +716,30 @@ class AnalyzeUrl(
      * urlOption临时cookie > 数据库cookie
      */
     fun setCookie() {
-        val cookie = CookieBridge.store?.getCookie(domain) ?: ""
-        if (cookie.isNotEmpty()) {
+        val scope = when {
+            source?.enabledCookieJar == true -> source.cookieScopeKey
+                ?.let(CookieBridge::taskCookieScopeValue)
+            source == null -> CookieBridge.taskScopeProvider?.invoke()?.takeIf {
+                it.startsWith(taskCookieScopePrefix)
+            }
+            else -> null
+        }
+        val cookie = if (scope != null) {
+            CookieBridge.store?.getCookie(scope, domain) ?: ""
+        } else {
+            CookieBridge.store?.getCookie(domain) ?: ""
+        }
+        if (!enabledCookieJar && cookie.isNotEmpty()) {
             mergeCookies(cookie, headerMap["Cookie"])?.let {
                 headerMap.put("Cookie", it)
             }
         }
         if (enabledCookieJar) {
             headerMap[cookieJarHeader] = "1"
+            if (scope != null) headerMap["TaskCookieScope"] = scope
         } else {
             headerMap.remove(cookieJarHeader)
+            headerMap.remove("TaskCookieScope")
         }
     }
 
@@ -746,7 +787,8 @@ class AnalyzeUrl(
             sourceRegex: String?,
             headerMap: Map<String, String>?,
             delayTime: Long,
-            source: SourceContract?
+            source: SourceContract?,
+            taskCookieScope: String? = null
         ): StrResponse
 
     }

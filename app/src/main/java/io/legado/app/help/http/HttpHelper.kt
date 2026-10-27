@@ -412,12 +412,24 @@ val okHttpClient: OkHttpClient by lazy {
         }
         .addNetworkInterceptor { chain ->
             var request = chain.request()
-            val enableCookieJar = request.header(cookieJarHeader) != null
-
+            val requestTag = request.tag(CookieJarRequestTag::class.java)
+            val hasCookieJarHeader = request.header(cookieJarHeader) != null
+            val taskScope = request.header(CookieManager.taskCookieScopeHeader) ?: requestTag?.taskScope
+            val enableCookieJar = hasCookieJarHeader || taskScope != null || requestTag != null
             if (enableCookieJar) {
-                val requestBuilder = request.newBuilder()
-                requestBuilder.removeHeader(cookieJarHeader)
-                request = CookieManager.loadRequest(requestBuilder.build())
+                request = request.newBuilder()
+                    .tag(
+                        CookieJarRequestTag::class.java,
+                        requestTag?.copy(taskScope = taskScope)
+                            ?: CookieJarRequestTag(taskScope)
+                    )
+                    .build()
+                request = CookieManager.loadRequest(request)
+            } else if (request.header(CookieManager.taskCookieScopeHeader) != null) {
+                request = request.newBuilder()
+                    .removeHeader(cookieJarHeader)
+                    .removeHeader(CookieManager.taskCookieScopeHeader)
+                    .build()
             }
 
             val networkResponse = chain.proceed(request)

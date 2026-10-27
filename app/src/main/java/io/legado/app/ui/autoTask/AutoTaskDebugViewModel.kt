@@ -6,6 +6,7 @@ import io.legado.app.model.AutoTask
 import io.legado.app.model.AutoTaskRule
 import io.legado.app.model.AutoTaskProtocol
 import io.legado.app.model.Debug
+import io.legado.app.help.http.TaskCookieContext
 import io.legado.app.utils.stackTraceStr
 
 class AutoTaskDebugViewModel(application: Application) : BaseViewModel(application),
@@ -43,11 +44,16 @@ class AutoTaskDebugViewModel(application: Application) : BaseViewModel(applicati
                 return@execute
             }
             runCatching {
-                source.evalJS(script)
-            }.onSuccess { result ->
-                val protocol = AutoTaskProtocol.handle(result, context, rule.name) { msg ->
+                val result = kotlinx.coroutines.withContext(
+                    TaskCookieContext(rule.id, rule.enabledCookieJar)
+                ) {
+                    source.evalJS(script, kotlinx.coroutines.currentCoroutineContext())
+                }
+                AutoTaskProtocol.handle(result, context, rule.name) { msg ->
                     Debug.log(source.getKey(), msg, showTime = false)
                 }
+                result
+            }.onSuccess { result ->
                 val detail = result?.toString()?.take(200)
                 if (!detail.isNullOrBlank()) {
                     Debug.log(source.getKey(), detail, showTime = false)

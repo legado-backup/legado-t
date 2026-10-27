@@ -99,7 +99,8 @@ object BackstageWebViewFetcher : AnalyzeUrl.WebViewFetcher {
         sourceRegex: String?,
         headerMap: Map<String, String>?,
         delayTime: Long,
-        source: SourceContract?
+        source: SourceContract?,
+        taskCookieScope: String?
     ): StrResponse {
         return BackstageWebView(
             url = url,
@@ -110,6 +111,7 @@ object BackstageWebViewFetcher : AnalyzeUrl.WebViewFetcher {
             headerMap = headerMap,
             delayTime = delayTime,
             source = source as? BaseSource,
+            explicitTaskCookieScope = taskCookieScope,
         ).getStrResponse()
     }
 

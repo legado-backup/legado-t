@@ -38,6 +38,7 @@ class SourceLoginViewModel(application: Application) : BaseViewModel(application
                         bookSourceUrl = "${AutoTask.SOURCE_KEY}:${rule.id}",
                         bookSourceName = rule.name
                     ).apply {
+                        cookieScopeKey = rule.id
                         loginUrl = rule.loginUrl
                         loginUi = rule.loginUi
                         loginCheckJs = rule.loginCheckJs

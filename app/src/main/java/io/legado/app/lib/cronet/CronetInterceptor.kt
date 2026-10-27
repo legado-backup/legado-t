@@ -24,10 +24,11 @@ class CronetInterceptor(private val cookieJar: CookieJar) : Interceptor {
             throw IOException("Canceled")
         }
         val original: Request = chain.request()
-        //Cronet未初始化
+        // Cronet 未初始化时交给下游 OkHttp interceptor 处理 CookieJar 标记。
         if (!CronetLoader.install() || cronetEngine == null) {
             return chain.proceed(original)
         }
+        var fallbackRequest = original
         val cronetException: Exception
         try {
             val builder: Request.Builder = original.newBuilder()
@@ -47,10 +48,24 @@ class CronetInterceptor(private val cookieJar: CookieJar) : Interceptor {
 
             var newReq = builder.build()
 
-            if (newReq.header(cookieJarHeader) != null) {
+            val requestTag = newReq.tag(io.legado.app.help.http.CookieJarRequestTag::class.java)
+            if (newReq.header(cookieJarHeader) != null ||
+                newReq.header(CookieManager.taskCookieScopeHeader) != null ||
+                requestTag != null
+            ) {
+                val taskScope = newReq.header(CookieManager.taskCookieScopeHeader)
+                    ?: requestTag?.taskScope
+                newReq = newReq.newBuilder()
+                    .tag(
+                        io.legado.app.help.http.CookieJarRequestTag::class.java,
+                        requestTag?.copy(taskScope = taskScope)
+                            ?: io.legado.app.help.http.CookieJarRequestTag(taskScope)
+                    )
+                    .build()
                 newReq = CookieManager.loadRequest(newReq)
             }
 
+            fallbackRequest = newReq
             return proceedWithCronet(newReq, chain.call(), chain.readTimeoutMillis())!!
         } catch (e: Exception) {
             cronetException = e
@@ -63,7 +78,7 @@ class CronetInterceptor(private val cookieJar: CookieJar) : Interceptor {
             }
         }
         try {
-            return chain.proceed(original)
+            return chain.proceed(fallbackRequest)
         } catch (e: Exception) {
             e.addSuppressed(cronetException)
             throw e

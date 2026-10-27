@@ -9,9 +9,19 @@ import io.legado.app.help.http.api.CookieManagerInterface
 object CookieBridge {
 
     const val cookieJarHeader = "CookieJar"
+    const val taskCookieScopeHeader = "TaskCookieScope"
+    const val taskCookieScopePrefix = "task:"
+
+    fun taskCookieScopeValue(taskKey: String): String =
+        taskCookieScopePrefix + io.legado.app.utils.MD5Utils.md5Encode16(taskKey)
 
     /** cookie 存取实现, app 接线为 CookieStore */
     var store: CookieManagerInterface? = null
+
+    /** 当前任务启用 CookieJar 时的作用域; disabled tasks return null. */
+    var taskScopeProvider: (() -> String?)? = null
+    var taskSourceKeyProvider: (() -> String?)? = null
+    var taskCookieStoreProvider: ((scope: String, sourceKey: String) -> CookieManagerInterface)? = null
 
 }
 

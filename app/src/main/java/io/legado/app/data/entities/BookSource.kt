@@ -4,6 +4,7 @@ import android.text.TextUtils
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
+import androidx.room.Ignore
 import androidx.room.PrimaryKey
 import androidx.room.TypeConverter
 import androidx.room.TypeConverters
@@ -101,6 +102,9 @@ data class BookSource(
     // JS 源主脚本;非空即为JS源(spec: docs/superpowers/specs/2026-07-07-js-single-file-source-design.md)
     var mainJs: String? = null,
 ) : BaseSource, BookSourceContract {
+
+    @Ignore
+    override var cookieScopeKey: String? = null
 
     override fun getTag(): String {
         return bookSourceName

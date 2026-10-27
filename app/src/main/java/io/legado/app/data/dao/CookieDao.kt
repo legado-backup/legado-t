@@ -21,6 +21,12 @@ interface CookieDao {
     @Query("delete from cookies where url = :url")
     fun delete(url: String)
 
+    @Query("select * from cookies where substr(url, 1, length(:prefix)) = :prefix")
+    fun getByPrefix(prefix: String): List<Cookie>
+
+    @Query("delete from cookies where substr(url, 1, length(:prefix)) = :prefix")
+    fun deleteByPrefix(prefix: String)
+
     @Query("delete from cookies where url like '%|%'")
     fun deleteOkHttp()
 }

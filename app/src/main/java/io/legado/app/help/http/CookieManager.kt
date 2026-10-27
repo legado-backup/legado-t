@@ -22,6 +22,7 @@ object CookieManager {
      */
 
     const val cookieJarHeader = "CookieJar"
+    const val taskCookieScopeHeader = "TaskCookieScope"
 
     /**
      * 从响应中保存Cookies
@@ -29,24 +30,31 @@ object CookieManager {
     fun saveResponse(response: Response) {
         val url = response.request.url
         val headers = response.headers
-        saveCookiesFromHeaders(url, headers)
+        val taskScope = response.request
+            .tag(CookieJarRequestTag::class.java)
+            ?.taskScope
+            ?: response.request.header(taskCookieScopeHeader)
+        saveCookiesFromHeaders(url, headers, taskScope)
     }
 
-    fun saveResponse(response: Connection.Response) {
+    fun saveResponse(response: Connection.Response, taskScope: String? = null) {
         val url = response.url().toHttpUrlOrNull() ?: return
         val headers = response.multiHeaders().toHeaders()
-        saveCookiesFromHeaders(url, headers)
+        saveCookiesFromHeaders(url, headers, taskScope)
     }
 
-    private fun saveCookiesFromHeaders(url: HttpUrl, headers: Headers) {
+    private fun saveCookiesFromHeaders(url: HttpUrl, headers: Headers, taskScope: String? = null) {
         val domain = NetworkUtils.getSubDomain(url.toString())
         val cookies = Cookie.parseAll(url, headers)
 
-        val sessionCookie = cookies.filter { !it.persistent }.getString()
-        updateSessionCookie(domain, sessionCookie)
-
-        val cookieString = cookies.filter { it.persistent }.getString()
-        CookieStore.replaceCookie(domain, cookieString)
+        if (taskScope != null) {
+            CookieStore.updateTaskCookie(taskScope, url.toString(), cookies)
+        } else {
+            val sessionCookie = cookies.filter { !it.persistent }.getString()
+            updateSessionCookie(domain, sessionCookie)
+            val cookieString = cookies.filter { it.persistent }.getString()
+            CookieStore.replaceCookie(domain, cookieString)
+        }
     }
 
     /**
@@ -54,24 +62,60 @@ object CookieManager {
      */
     fun loadRequest(request: Request): Request {
         val url = request.url.toString()
-        val domain = NetworkUtils.getSubDomain(url)
+        val requestTag = request.tag(CookieJarRequestTag::class.java)
+        val taskScope = requestTag?.taskScope
+            ?: request.header(taskCookieScopeHeader)
+        val cookie = if (taskScope != null) {
+            CookieStore.getCookie(taskScope, url)
+        } else {
+            CookieStore.getCookie(url)
+        }
+        val explicitCookie = if (requestTag?.cookieHeaderGenerated == true) {
+            requestTag.explicitCookieHeader.takeIf {
+                requestTag.explicitCookieHost.equals(request.url.host, ignoreCase = true)
+            }
+        } else {
+            request.header("Cookie")
+        }
+        val explicitCookieHost = if (explicitCookie == null) {
+            null
+        } else if (requestTag?.cookieHeaderGenerated == true) {
+            requestTag.explicitCookieHost
+        } else {
+            request.url.host
+        }
+        val newCookie = mergeCookies(cookie, explicitCookie)
+        val newTag = CookieJarRequestTag(
+            taskScope = taskScope,
+            cookieHeaderGenerated = true,
+            explicitCookieHeader = explicitCookie,
+            explicitCookieHost = explicitCookieHost
+        )
 
-        val cookie = CookieStore.getCookie(domain)
-        val requestCookie = request.header("Cookie")
-
-        val newCookie = mergeCookies(requestCookie, cookie) ?: return request
-
-        kotlin.runCatching {
-            return request.newBuilder()
-                .header("Cookie", newCookie)
+        val cleanedRequest = request.newBuilder()
+            .removeHeader(cookieJarHeader)
+            .removeHeader(taskCookieScopeHeader)
+            .tag(CookieJarRequestTag::class.java, newTag)
+            .build()
+        return kotlin.runCatching {
+            request.newBuilder()
+                .apply {
+                    if (newCookie.isNullOrBlank()) removeHeader("Cookie")
+                    else header("Cookie", newCookie)
+                }
+                .removeHeader(cookieJarHeader)
+                .removeHeader(taskCookieScopeHeader)
+                .tag(CookieJarRequestTag::class.java, newTag)
                 .build()
         }.onFailure {
-            CookieStore.removeCookie(url)
-            val msg = "设置cookie出错，已清除cookie $domain cookie:$newCookie\n$it"
+            if (taskScope != null) {
+                CookieStore.removeTaskCookie(taskScope, url)
+            } else {
+                CookieStore.removeCookie(url)
+            }
+            val msg = "设置cookie出错，已清除cookie ${NetworkUtils.getSubDomain(url)} cookie:$newCookie\n$it"
             AppLog.put(msg, it)
-        }
-
-        return request
+        }.getOrElse { cleanedRequest }
     }
 
     private fun getSessionCookieMap(domain: String): MutableMap<String, String>? {
@@ -99,10 +143,8 @@ object CookieManager {
     }
 
     fun mergeCookiesToMap(vararg cookies: String?): MutableMap<String, String> {
-        return cookies.filterNotNull().map {
-            CookieStore.cookieToMap(it)
-        }.reduce { acc, cookieMap ->
-            acc.apply { putAll(cookieMap) }
+        return cookies.filterNotNull().fold(mutableMapOf()) { acc, cookie ->
+            acc.apply { putAll(CookieStore.cookieToMap(cookie)) }
         }
     }
 
@@ -114,7 +156,10 @@ object CookieManager {
 
         getSessionCookieMap(domain)?.let {
             it.remove(key)
-            CookieStore.mapToCookie(it)?.let { cookie ->
+            val cookie = CookieStore.mapToCookie(it)
+            if (cookie.isNullOrEmpty()) {
+                CacheManager.deleteMemory("${domain}_session_cookie")
+            } else {
                 CacheManager.putMemory("${domain}_session_cookie", cookie)
             }
         }
@@ -122,8 +167,13 @@ object CookieManager {
         val cookie = getCookieNoSession(url)
         if (cookie.isNotEmpty()) {
             val cookieMap = CookieStore.cookieToMap(cookie).apply { remove(key) }
-            CookieStore.mapToCookie(cookieMap)?.let {
-                CookieStore.setCookie(url, it)
+            val updatedCookie = CookieStore.mapToCookie(cookieMap)
+            if (updatedCookie.isNullOrEmpty()) {
+                val domain = NetworkUtils.getSubDomain(url)
+                appDb.cookieDao.delete(domain)
+                CacheManager.deleteMemory("${domain}_cookie")
+            } else {
+                CookieStore.setCookie(url, updatedCookie)
             }
         }
     }
@@ -140,13 +190,60 @@ object CookieManager {
         }
     }
 
-    fun applyToWebView(url: String) {
-        val baseUrl = NetworkUtils.getBaseUrl(url) ?: return
-        val cookies = CookieStore.getCookie(url).splitNotBlank(";")
-        val cookieManager = CookieManager.getInstance()
-        cookieManager.removeSessionCookies(null)
-        cookies.forEach {
-            cookieManager.setCookie(baseUrl, it)
+    fun applyToWebView(
+        url: String,
+        taskScope: String? = null,
+        cookieManager: android.webkit.CookieManager = CookieManager.getInstance(),
+        onApplied: (() -> Unit)? = null
+    ) {
+        val baseUrl = NetworkUtils.getBaseUrl(url) ?: return onApplied?.invoke() ?: Unit
+        val currentDomain = NetworkUtils.getSubDomain(url)
+        val applyCookies: () -> Unit = {
+            val cookieSeeds = if (taskScope != null) {
+                CookieStore.getTaskCookiesByDomain(taskScope)
+                    .map { (domain, cookies) ->
+                        val cookieUrl = if (domain == currentDomain) {
+                            baseUrl
+                        } else {
+                            "https://$domain"
+                        }
+                        cookieUrl to cookies
+                    }
+                    .toMutableList()
+                    .apply {
+                        if (none { it.first == baseUrl }) {
+                            add(baseUrl to CookieStore.getCookie(taskScope, url))
+                        }
+                    }
+            } else {
+                listOf(baseUrl to CookieStore.getCookie(url))
+            }
+            val pending = cookieSeeds.sumOf { (_, cookies) -> cookies.splitNotBlank(";").size }
+            if (pending == 0) {
+                cookieManager.flush()
+                onApplied?.invoke()
+            } else {
+                val remaining = java.util.concurrent.atomic.AtomicInteger(pending)
+                cookieSeeds.forEach { (cookieUrl, cookies) ->
+                    cookies.splitNotBlank(";").forEach { cookie ->
+                        cookieManager.setCookie(cookieUrl, cookie) {
+                            if (remaining.decrementAndGet() == 0) {
+                                cookieManager.flush()
+                                onApplied?.invoke()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (taskScope != null) {
+            // Reconcile each stored domain before the first task WebView navigation.
+            cookieManager.removeAllCookies { applyCookies() }
+        } else if (onApplied != null) {
+            cookieManager.removeSessionCookies { applyCookies() }
+        } else {
+            cookieManager.removeSessionCookies(null)
+            applyCookies()
         }
     }
 

@@ -19,6 +19,7 @@ import io.legado.app.constant.PreferKey
 import io.legado.app.model.AutoTask
 import io.legado.app.model.AutoTaskRule
 import io.legado.app.model.AutoTaskProtocol
+import io.legado.app.help.http.TaskCookieContext
 import io.legado.app.utils.CronSchedule
 import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.putPrefBoolean
@@ -390,53 +391,41 @@ class AutoTaskService : BaseService() {
         notificationContent = getString(R.string.auto_task_running, task.name)
         upNotification()
         val startAt = System.currentTimeMillis()
-        runCatching {
-            source.evalJS(script)
-        }.onSuccess { result ->
-            try {
-                val cost = System.currentTimeMillis() - startAt
-                val logLines = mutableListOf<String>()
-                AutoTaskProtocol.handle(result, this, task.name) { msg ->
-                    AppLog.put("AutoTask[${task.id}] ${task.name}: $msg")
-                    logLines.add(msg)
-                }
-                val detail = result?.toString()?.take(200)
-                val msg = if (detail.isNullOrBlank()) {
-                    "AutoTask[${task.id}] ${task.name} done (${cost}ms)."
-                } else {
-                    "AutoTask[${task.id}] ${task.name} done (${cost}ms): $detail"
-                }
-                val lastRun = System.currentTimeMillis()
-                val lastLog = buildLastLog(logLines, detail, cost, lastRun)
-                AutoTask.update(task.id) {
-                    it.copy(
-                        lastRunAt = lastRun,
-                        lastResult = detail,
-                        lastError = null,
-                        lastLog = lastLog
-                    )
-                }
-                notificationContent = getString(
-                    R.string.auto_task_last_run,
-                    timeFormat.format(Date(lastRun))
-                )
-                upNotification()
-                AppLog.put(msg)
-            } catch (error: Throwable) {
-                val msg = error.localizedMessage ?: error.toString()
-                val lastLog = buildErrorLog(msg, error, System.currentTimeMillis())
-                AutoTask.update(task.id) {
-                    it.copy(
-                        lastRunAt = System.currentTimeMillis(),
-                        lastError = msg,
-                        lastLog = lastLog
-                    )
-                }
-                notificationContent = getString(R.string.auto_task_failed, msg)
-                upNotification()
-                AppLog.put("AutoTask[${task.id}] ${task.name} failed: $msg", error)
+        try {
+            val result = kotlinx.coroutines.withContext(
+                TaskCookieContext(task.id, task.enabledCookieJar)
+            ) {
+                source.evalJS(script, kotlinx.coroutines.currentCoroutineContext())
             }
-        }.onFailure { error ->
+            val logLines = mutableListOf<String>()
+            AutoTaskProtocol.handle(result, this@AutoTaskService, task.name) { msg ->
+                AppLog.put("AutoTask[${task.id}] ${task.name}: $msg")
+                logLines.add(msg)
+            }
+            val cost = System.currentTimeMillis() - startAt
+            val detail = result?.toString()?.take(200)
+            val msg = if (detail.isNullOrBlank()) {
+                "AutoTask[${task.id}] ${task.name} done (${cost}ms)."
+            } else {
+                "AutoTask[${task.id}] ${task.name} done (${cost}ms): $detail"
+            }
+            val lastRun = System.currentTimeMillis()
+            val lastLog = buildLastLog(logLines, detail, cost, lastRun)
+            AutoTask.update(task.id) {
+                it.copy(
+                    lastRunAt = lastRun,
+                    lastResult = detail,
+                    lastError = null,
+                    lastLog = lastLog
+                )
+            }
+            notificationContent = getString(
+                R.string.auto_task_last_run,
+                timeFormat.format(Date(lastRun))
+            )
+            upNotification()
+            AppLog.put(msg)
+        } catch (error: Throwable) {
             val msg = error.localizedMessage ?: error.toString()
             val lastLog = buildErrorLog(msg, error, System.currentTimeMillis())
             AutoTask.update(task.id) {

@@ -380,12 +380,25 @@ class ObsoleteUrlFactory(private var client: OkHttpClient) : URLStreamHandlerFac
             clientBuilder.networkInterceptors().add(networkInterceptor)
             clientBuilder.addNetworkInterceptor { chain ->
                 var request1 = chain.request()
-                val enableCookieJar = request1.header(cookieJarHeader) != null
+                val requestTag = request1.tag(CookieJarRequestTag::class.java)
+                val hasCookieJarHeader = request1.header(cookieJarHeader) != null
+                val taskScope = request1.header(CookieManager.taskCookieScopeHeader) ?: requestTag?.taskScope
+                val enableCookieJar = hasCookieJarHeader || taskScope != null || requestTag != null
 
                 if (enableCookieJar) {
-                    val requestBuilder = request1.newBuilder()
-                    requestBuilder.removeHeader(cookieJarHeader)
-                    request1 = CookieManager.loadRequest(requestBuilder.build())
+                    request1 = request1.newBuilder()
+                        .tag(
+                            CookieJarRequestTag::class.java,
+                            requestTag?.copy(taskScope = taskScope)
+                                ?: CookieJarRequestTag(taskScope)
+                        )
+                        .build()
+                    request1 = CookieManager.loadRequest(request1)
+                } else if (request1.header(CookieManager.taskCookieScopeHeader) != null) {
+                    request1 = request1.newBuilder()
+                        .removeHeader(cookieJarHeader)
+                        .removeHeader(CookieManager.taskCookieScopeHeader)
+                        .build()
                 }
 
                 val networkResponse = chain.proceed(request1)

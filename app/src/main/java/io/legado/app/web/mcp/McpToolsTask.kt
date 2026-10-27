@@ -4,6 +4,7 @@ import com.google.gson.JsonParser
 import io.legado.app.model.AutoTask
 import io.legado.app.model.AutoTaskProtocol
 import io.legado.app.model.AutoTaskRule
+import io.legado.app.help.http.TaskCookieContext
 import io.legado.app.utils.GSON
 import io.modelcontextprotocol.kotlin.sdk.server.Server
 import io.modelcontextprotocol.kotlin.sdk.types.ToolAnnotations
@@ -239,7 +240,11 @@ private fun Server.serverAddRunAutoTask() {
             val startMs = System.currentTimeMillis()
             val deferred = debugScope.async {
                 val evalContext = currentCoroutineContext()
-                runCatching { source.evalJS(script, evalContext) }
+                runCatching {
+                    kotlinx.coroutines.withContext(evalContext + TaskCookieContext(rule.id, rule.enabledCookieJar)) {
+                        source.evalJS(script, currentCoroutineContext())
+                    }
+                }
             }
             val outcome = withTimeoutOrNull(timeoutSec * 1000L) { deferred.await() }
             val elapsedMs = System.currentTimeMillis() - startMs

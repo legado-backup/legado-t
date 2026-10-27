@@ -4,6 +4,8 @@ import androidx.annotation.Keep
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.help.http.CookieManager
 import io.legado.app.help.http.CookieManager.cookieJarHeader
+import io.legado.app.help.http.CookieManager.taskCookieScopeHeader
+import io.legado.app.help.http.CookieJarRequestTag
 import io.legado.app.help.http.okHttpClient
 import io.legado.app.utils.DebugLog
 import io.legado.app.utils.asIOException
@@ -57,16 +59,30 @@ abstract class AbsCallBack(
     private var cancelJob: Coroutine<*>? = null
     private var followRedirect = false
     private var enableCookieJar = false
+    private var taskCookieScope: String? = null
     private var redirectRequest: Request? = null
 
     init {
         if (readTimeoutMillis == 0) {
             readTimeoutMillis = Int.MAX_VALUE
         }
-        if (originalRequest.header(cookieJarHeader) != null) {
+        if (originalRequest.header(cookieJarHeader) != null ||
+            originalRequest.header(taskCookieScopeHeader) != null ||
+            originalRequest.tag(CookieJarRequestTag::class.java) != null
+        ) {
             enableCookieJar = true
+            taskCookieScope = originalRequest.tag(CookieJarRequestTag::class.java)?.taskScope
+                ?: originalRequest.header(taskCookieScopeHeader)
+            val tag = originalRequest.tag(CookieJarRequestTag::class.java)
             originalRequest = originalRequest.newBuilder()
-                .removeHeader(cookieJarHeader).build()
+                .removeHeader(cookieJarHeader)
+                .removeHeader(taskCookieScopeHeader)
+                .tag(
+                    CookieJarRequestTag::class.java,
+                    tag?.copy(taskScope = taskCookieScope)
+                        ?: CookieJarRequestTag(taskCookieScope)
+                )
+                .build()
         }
     }
 
