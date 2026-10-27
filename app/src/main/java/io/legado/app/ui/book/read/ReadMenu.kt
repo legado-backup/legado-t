@@ -35,6 +35,7 @@ import io.legado.app.lib.theme.primaryTextColor
 import io.legado.app.model.ReadBook
 import io.legado.app.model.SourceCallBack
 import io.legado.app.ui.browser.WebViewActivity
+import io.legado.app.ui.login.hasSourceLoginConfiguration
 import io.legado.app.ui.widget.PopupAction
 import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.applyAppTint
@@ -421,7 +422,7 @@ class ReadMenu @JvmOverloads constructor(
         //书源操作
         tvSourceAction.onClick {
             val items = buildList {
-                if (!ReadBook.bookSource?.loginUrl.isNullOrEmpty()) {
+                if (ReadBook.bookSource?.let(::hasSourceLoginConfiguration) == true) {
                     add(SelectItem(context.getString(R.string.login), "login"))
                     if (ReadBook.curTextChapter?.isVip == true && ReadBook.curTextChapter?.isPay != true) {
                         add(SelectItem(context.getString(R.string.chapter_pay), "chapterPay"))

@@ -41,6 +41,18 @@ class ReaderSourceActionMenuTest {
     }
 
     @Test
+    fun `reader source action menu uses shared login configuration check`() {
+        val readMenuKt = ProjectSources.app("src/main/java/io/legado/app/ui/book/read/ReadMenu.kt")
+
+        assertContains("ReadMenu.kt", readMenuKt, "import io.legado.app.ui.login.hasSourceLoginConfiguration")
+        assertContains(
+            "ReadMenu.kt",
+            readMenuKt,
+            "ReadBook.bookSource?.let(::hasSourceLoginConfiguration) == true"
+        )
+    }
+
+    @Test
     fun `popup action supports vertical source menus and danger items`() {
         val popupActionKt = ProjectSources.app("src/main/java/io/legado/app/ui/widget/PopupAction.kt")
 
