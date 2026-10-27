@@ -7,6 +7,7 @@ import io.legado.app.constant.AppPattern
 import io.legado.app.data.entities.*
 import io.legado.app.help.book.isWebFile
 import io.legado.app.help.coroutine.CompositeCoroutine
+import io.legado.app.help.source.getBookType
 import io.legado.app.help.source.sortUrls
 import io.legado.app.model.rss.Rss
 import io.legado.app.model.webBook.WebBook
@@ -19,6 +20,34 @@ import java.util.*
 
 object Debug {
     var callback: Callback? = null
+
+    /**
+     * 直接调试目录或正文时没有搜索结果可供转换,构造一个带完整 URL/来源上下文的临时书籍。
+     * JS 源的 getChapters/getContent 会直接读取这些对象字段。
+     */
+    internal fun createDebugBook(
+        bookSource: BookSource,
+        url: String,
+        tocUrl: String = url,
+    ): Book {
+        return Book(
+            bookUrl = url,
+            tocUrl = tocUrl,
+            origin = bookSource.bookSourceUrl,
+            originName = bookSource.bookSourceName,
+            name = "调试",
+            type = bookSource.getBookType(),
+        )
+    }
+
+    internal fun createDebugChapter(book: Book, url: String): BookChapter {
+        return BookChapter(
+            url = url,
+            title = "调试",
+            baseUrl = book.tocUrl,
+            bookUrl = book.bookUrl,
+        )
+    }
     private var debugSource: String? = null
     private val tasks: CompositeCoroutine = CompositeCoroutine()
     val debugMessageMap = HashMap<String, String>()
@@ -167,6 +196,21 @@ object Debug {
         debugSource = bookSource.bookSourceUrl
         startTime = System.currentTimeMillis()
         when {
+            key.startsWith("++") -> {
+                val url = key.substring(2)
+                val book = createDebugBook(bookSource, url)
+                log(bookSource.bookSourceUrl, "⇒开始访目录页:$url")
+                tocDebug(scope, bookSource, book)
+            }
+
+            key.startsWith("--") -> {
+                val url = key.substring(2)
+                val book = createDebugBook(bookSource, url)
+                val chapter = createDebugChapter(book, url)
+                log(bookSource.bookSourceUrl, "⇒开始访正文页:$url")
+                contentDebug(scope, bookSource, book, chapter, null)
+            }
+
             key.isAbsUrl() -> {
                 val book = Book()
                 book.origin = bookSource.bookSourceUrl
@@ -179,26 +223,6 @@ object Debug {
                 val url = key.substringAfter("::")
                 log(bookSource.bookSourceUrl, "⇒开始访问发现页:$url")
                 exploreDebug(scope, bookSource, url)
-            }
-
-            key.startsWith("++") -> {
-                val url = key.substring(2)
-                val book = Book()
-                book.origin = bookSource.bookSourceUrl
-                book.tocUrl = url
-                log(bookSource.bookSourceUrl, "⇒开始访目录页:$url")
-                tocDebug(scope, bookSource, book)
-            }
-
-            key.startsWith("--") -> {
-                val url = key.substring(2)
-                val book = Book()
-                book.origin = bookSource.bookSourceUrl
-                log(bookSource.bookSourceUrl, "⇒开始访正文页:$url")
-                val chapter = BookChapter()
-                chapter.title = "调试"
-                chapter.url = url
-                contentDebug(scope, bookSource, book, chapter, null)
             }
 
             else -> {
