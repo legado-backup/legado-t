@@ -24,6 +24,8 @@ class NostrSignerDialogLayoutTest {
         assertTrue("hint should float inside the outlined field", wrapper.contains("android:hint=\"@string/nostr_signer_bunker_hint\""))
         assertFalse("hint should not overlap the input text at the leading edge", input.contains("android:hint="))
         assertTrue("input text needs horizontal inset", input.contains("android:paddingStart=\"16dp\""))
+        assertTrue("bunker input should meet the minimum touch height", input.contains("android:minHeight=\"48dp\""))
+        assertTrue("bunker input text needs vertical inset", input.contains("android:paddingTop=\"6dp\"") && input.contains("android:paddingBottom=\"6dp\""))
         assertTrue("bunker URI must remain single-line", input.contains("android:singleLine=\"true\""))
         assertTrue("input text size should match standard body text", input.contains("android:textSize=\"16sp\""))
         assertTrue("hint should use the runtime secondary text color", controller.contains("binding.tilBunker.hintTextColor = ColorStateList.valueOf(secondaryColor)"))

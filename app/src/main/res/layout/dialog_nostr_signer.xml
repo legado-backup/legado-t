@@ -90,10 +90,13 @@
                 android:id="@+id/et_bunker"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:minHeight="48dp"
                 android:inputType="textUri|textNoSuggestions"
                 android:maxLines="1"
                 android:paddingStart="16dp"
+                android:paddingTop="6dp"
                 android:paddingEnd="16dp"
+                android:paddingBottom="6dp"
                 android:singleLine="true"
                 android:textSize="16sp" />
 
