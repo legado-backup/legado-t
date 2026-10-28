@@ -130,8 +130,10 @@ org.htmlunit.corejs.javascript.** { *; }
 -keepclassmembers class **.ui.login.SourceCallbackJsExtensions {
     public *;
 }
-# 缓存 Cookie
--keep class **.help.http.CookieStore{*;}
+# Cookie facade is invoked by name from Rhino scripts, including scheduled-task scopes.
+-keep class io.legado.app.help.http.CookieStore { *; }
+-keep class io.legado.app.help.http.TaskCookieStore { *; }
+-keep interface io.legado.app.help.http.api.CookieManagerInterface { *; }
 -keep class **.help.CacheManager{*;}
 # StrResponse
 -keep class **.help.http.StrResponse{*;}

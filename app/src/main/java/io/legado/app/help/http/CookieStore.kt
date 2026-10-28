@@ -19,7 +19,7 @@ import io.legado.app.utils.NetworkUtils
 import io.legado.app.utils.removeCookie
 
 @Keep
-object CookieStore : CookieManagerInterface {
+object CookieStore : CookieManagerInterface, TaskCookieBackend {
 
     /**
      *保存cookie到数据库，会自动识别url的二级域名
@@ -51,7 +51,7 @@ object CookieStore : CookieManagerInterface {
     }
 
     @Synchronized
-    fun setTaskCookie(scopeId: String, url: String, cookie: String?) {
+    override fun setTaskCookie(scopeId: String, url: String, cookie: String?) {
         val normalized = cookie
             ?.takeIf { it.isNotBlank() }
             ?.let { formatCookie(cookieToMap(it)) }
@@ -65,7 +65,7 @@ object CookieStore : CookieManagerInterface {
     }
 
     @Synchronized
-    fun mergeTaskCookie(scopeId: String, url: String, cookie: String?) {
+    override fun mergeTaskCookie(scopeId: String, url: String, cookie: String?) {
         if (cookie.isNullOrBlank()) return
         val key = taskCookieKey(scopeId, url)
         val incoming = cookieToMap(cookie)
@@ -125,7 +125,7 @@ object CookieStore : CookieManagerInterface {
     }
 
     @Synchronized
-    fun getTaskCookie(scopeId: String, url: String): String {
+    override fun getTaskCookie(scopeId: String, url: String): String {
         val key = taskCookieKey(scopeId, url)
         return CookieManager.mergeCookies(
             appDb.cookieDao.get(key)?.cookie,
@@ -144,7 +144,7 @@ object CookieStore : CookieManagerInterface {
     }
 
     @Synchronized
-    fun removeTaskCookie(scopeId: String, url: String) {
+    override fun removeTaskCookie(scopeId: String, url: String) {
         val key = taskCookieKey(scopeId, url)
         appDb.cookieDao.delete(key)
         CacheManager.deleteMemory("${key}_session_cookie")
@@ -231,11 +231,8 @@ object CookieStore : CookieManagerInterface {
         return cookie
     }
 
-    fun getKey(url: String, key: String): String {
-        val cookie = getCookie(url)
-        val sessionCookie = CookieManager.getSessionCookie(url)
-        val cookieMap = mergeCookiesToMap(cookie, sessionCookie)
-        return cookieMap[key] ?: ""
+    override fun getKey(url: String, key: String): String {
+        return cookieToMap(getCookie(url))[key].orEmpty()
     }
 
     override fun removeCookie(url: String) {

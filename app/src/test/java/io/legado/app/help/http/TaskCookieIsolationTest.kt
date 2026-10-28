@@ -68,6 +68,46 @@ class TaskCookieIsolationTest {
     }
 
     @Test
+    fun taskCookieFacadeExposesGetKeyAndRemoveCookieToJavaScript() = runBlocking {
+        val backend = RecordingTaskCookieBackend()
+        val oldScopeProvider = CookieBridge.taskScopeProvider
+        val oldFactory = CookieBridge.taskCookieStoreProvider
+        try {
+            CookieBridge.taskScopeProvider = TaskCookieContext::currentHeaderValue
+            CookieBridge.taskCookieStoreProvider = { scope, sourceKey ->
+                TaskCookieStore(scope, sourceKey, backend)
+            }
+            val result = kotlinx.coroutines.withContext(TaskCookieContext("task-1", true)) {
+                AnalyzeRule().evalJS(
+                    "var token = cookie.getKey('https://example.com', 'token'); " +
+                        "cookie.removeCookie('https://example.com'); token"
+                )
+            }
+
+            assertEquals("value", result)
+            assertEquals(CookieBridge.taskCookieScopeValue("task-1"), backend.removedScope)
+            assertEquals("https://example.com", backend.removedUrl)
+        } finally {
+            CookieBridge.taskScopeProvider = oldScopeProvider
+            CookieBridge.taskCookieStoreProvider = oldFactory
+        }
+    }
+
+    @Test
+    fun blankCookieClearsOnlyCurrentTaskScope() {
+        val backend = RecordingTaskCookieBackend()
+        val store = TaskCookieStore("task-1", "source-1", backend)
+
+        store.setCookie("https://example.com", null)
+        assertEquals("task-1", backend.removedScope)
+        assertEquals("https://example.com", backend.removedUrl)
+
+        backend.removedUrl = null
+        store.replaceCookie("https://example.com", "  ")
+        assertEquals("https://example.com", backend.removedUrl)
+    }
+
+    @Test
     fun analyzeUrlUsesTaskCookieFacade() {
         val source = TestSource()
         val fake = FakeCookieStore("task-cookie")
@@ -110,5 +150,18 @@ class TaskCookieIsolationTest {
         override fun removeCookie(url: String) = Unit
         override fun cookieToMap(cookie: String) = mutableMapOf<String, String>()
         override fun mapToCookie(cookieMap: Map<String, String>?) = cookieMap?.toString()
+    }
+
+    private class RecordingTaskCookieBackend : TaskCookieBackend {
+        var removedScope: String? = null
+        var removedUrl: String? = null
+
+        override fun setTaskCookie(scope: String, url: String, cookie: String?) = Unit
+        override fun mergeTaskCookie(scope: String, url: String, cookie: String?) = Unit
+        override fun getTaskCookie(scope: String, url: String): String = "token=value"
+        override fun removeTaskCookie(scope: String, url: String) {
+            removedScope = scope
+            removedUrl = url
+        }
     }
 }
