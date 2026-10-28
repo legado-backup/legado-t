@@ -3,7 +3,6 @@ package io.legado.app.ui.association
 import android.app.Application
 import androidx.core.net.toUri
 import androidx.lifecycle.MutableLiveData
-import com.jayway.jsonpath.JsonPath
 import io.legado.app.R
 import io.legado.app.base.BaseViewModel
 import io.legado.app.constant.AppConst
@@ -18,11 +17,10 @@ import io.legado.app.help.http.newCallResponseBody
 import io.legado.app.help.http.okHttpClient
 import io.legado.app.help.source.SourceHelp
 import io.legado.app.utils.GSON
-import io.legado.app.utils.fromJsonArray
-import io.legado.app.utils.fromJsonObject
 import io.legado.app.utils.isAbsUrl
 import io.legado.app.utils.isJsonArray
 import io.legado.app.utils.isJsonObject
+import io.legado.app.utils.fromJsonObject
 import io.legado.app.utils.isUri
 import io.legado.app.utils.jsonPath
 import io.legado.app.utils.readText
@@ -117,31 +115,10 @@ class ImportRssSourceViewModel(app: Application) : BaseViewModel(app) {
     private suspend fun importSourceAwait(text: String) {
         val mText = text.trim()
         when {
-            mText.isJsonObject() -> kotlin.runCatching {
-                val json = JsonPath.parse(mText)
-                val urls = json.read<List<String>>("$.sourceUrls")
-                if (!urls.isNullOrEmpty()) {
-                    urls.forEach {
-                        importSourceUrl(it)
-                    }
-                }
-            }.onFailure {
-                GSON.fromJsonArray<RssSource>(mText).getOrThrow().let {
-                    val source = it.firstOrNull() ?: return@let
-                    if (source.sourceUrl.isEmpty()) {
-                        throw NoStackTraceException("不是订阅源")
-                    }
-                    allSources.addAll(it)
-                }
-            }
-
-            mText.isJsonArray() -> {
-                GSON.fromJsonArray<RssSource>(mText).getOrThrow().let {
-                    val source = it.firstOrNull() ?: return@let
-                    if (source.sourceUrl.isEmpty()) {
-                        throw NoStackTraceException("不是订阅源")
-                    }
-                    allSources.addAll(it)
+            mText.isJsonObject() || mText.isJsonArray() -> {
+                when (val parsed = ImportRssSourceParser.parse(mText)) {
+                    is RssSourceImportData.Sources -> allSources.addAll(parsed.items)
+                    is RssSourceImportData.SourceUrls -> parsed.urls.forEach { importSourceUrl(it) }
                 }
             }
 
