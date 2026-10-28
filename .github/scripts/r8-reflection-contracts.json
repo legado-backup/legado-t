@@ -10,6 +10,7 @@
     "io.legado.app.help.config.ThemeConfig",
     "io.legado.app.help.config.ThemeConfig$Config",
     "io.legado.app.help.http.CookieStore",
+    "io.legado.app.help.http.TaskCookieStore",
     "io.legado.app.help.update.AppUpdateGitHub",
     "io.legado.app.help.update.GithubRelease",
     "io.legado.app.help.update.GithubRelease$Asset",
