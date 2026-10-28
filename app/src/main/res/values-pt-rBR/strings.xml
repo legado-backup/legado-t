@@ -229,7 +229,7 @@
     <string name="no_download">Nenhum download</string>
     <string name="download_count">Baixado %1$d/%2$d</string>
     <string name="import_select_book">Importar livro(s) selecionado(s)</string>
-    <string name="threads_num_title">Número de tarefas simultâneas</string>
+    <string name="threads_num_title">Threads simultâneas de atualização, busca e tarefas agendadas</string>
     <string name="change_icon">Alterar o ícone</string>
     <string name="remove_from_bookshelf">Excluir</string>
     <string name="start_read">Começar a leitura</string>

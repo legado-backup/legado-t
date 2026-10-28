@@ -22,6 +22,7 @@ object SharedJsScope {
     @Volatile
     private var cryptoScope: WeakReference<ScriptBindings>? = null
     private val cryptoLock = Any()
+    private val libraryCacheLock = Any()
     private const val CRYPTO_JS_ERROR_KEY = "cryptojs_load_error"
 
     private fun loadCryptoJs(): String? {
@@ -99,6 +100,50 @@ object SharedJsScope {
             scope.sealObject()
             scopeMap.put(key, WeakReference(scope))
         }
+        return scope
+    }
+
+    /**
+     * Create an uncached library scope for isolated executions such as parallel scheduled tasks.
+     * The regular [getScope] cache deliberately shares globals; workers must not mutate one another's
+     * JavaScript library state.
+     */
+    fun createIsolatedScope(jsLib: String?, coroutineContext: CoroutineContext?): ScriptBindings {
+        val scope = RhinoScriptEngine.getRuntimeScope(ScriptBindings())
+        loadCryptoJs()?.let { js ->
+            RhinoScriptEngine.eval(js, scope, coroutineContext)
+        }
+        if (!jsLib.isNullOrBlank()) {
+            if (jsLib.isJsonObject()) {
+                val jsMap: Map<String, String> = GSON.fromJson(
+                    jsLib,
+                    TypeToken.getParameterized(
+                        Map::class.java,
+                        String::class.java,
+                        String::class.java
+                    ).type
+                )
+                jsMap.values.forEach { url ->
+                    if (url.isAbsUrl()) {
+                        val key = MD5Utils.md5Encode(url)
+                        val cached = synchronized(libraryCacheLock) {
+                            JsScopeBridge.cacheGet(key)
+                        }
+                        val js = cached ?: JsScopeBridge.download(url)?.also { downloaded ->
+                            synchronized(libraryCacheLock) {
+                                if (JsScopeBridge.cacheGet(key) == null) {
+                                    JsScopeBridge.cachePut(key, downloaded)
+                                }
+                            }
+                        } ?: throw NoStackTraceException("下载jsLib-${url}失败")
+                        RhinoScriptEngine.eval(js, scope, coroutineContext)
+                    }
+                }
+            } else {
+                RhinoScriptEngine.eval(jsLib, scope, coroutineContext)
+            }
+        }
+        scope.sealObject()
         return scope
     }
 

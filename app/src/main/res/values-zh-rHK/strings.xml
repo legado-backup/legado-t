@@ -230,7 +230,7 @@
     <string name="no_download">暫無任務</string>
     <string name="download_count">已下載 %1$d/%2$d</string>
     <string name="import_select_book">導入選擇書輯</string>
-    <string name="threads_num_title">更新/搜尋線程數，太多會卡頓</string>
+    <string name="threads_num_title">更新、搜尋及定時任務線程數，太多會卡頓</string>
     <string name="change_icon">切換圖標</string>
     <string name="remove_from_bookshelf">刪除書輯</string>
     <string name="start_read">開始閲讀</string>

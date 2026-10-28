@@ -380,6 +380,27 @@ interface BaseSource : JsExtensionsAndroid, SourceContract {
         coroutineContext: CoroutineContext? = null,
         bindingsConfig: ScriptBindings.() -> Unit = {},
     ): Any? {
+        return evalJSInternal(jsStr, coroutineContext, bindingsConfig, isolateSharedScope = false)
+    }
+
+    /**
+     * Evaluate with a fresh JS library scope. Scheduled tasks use this entry point so parallel
+     * workers never mutate the cached scope shared by ordinary book-source requests.
+     */
+    fun evalJSInIsolatedScope(
+        jsStr: String,
+        coroutineContext: CoroutineContext? = null,
+        bindingsConfig: ScriptBindings.() -> Unit = {},
+    ): Any? {
+        return evalJSInternal(jsStr, coroutineContext, bindingsConfig, isolateSharedScope = true)
+    }
+
+    private fun evalJSInternal(
+        jsStr: String,
+        coroutineContext: CoroutineContext?,
+        bindingsConfig: ScriptBindings.() -> Unit,
+        isolateSharedScope: Boolean,
+    ): Any? {
         val bindings = buildScriptBindings { bindings ->
             bindings["java"] = this
             bindings["source"] = this
@@ -396,7 +417,11 @@ interface BaseSource : JsExtensionsAndroid, SourceContract {
             }
             bindings.apply(bindingsConfig)
         }
-        val sharedScope = getShareScope(null) ?: SharedJsScope.getCryptoScope(null)
+        val sharedScope = if (isolateSharedScope) {
+            SharedJsScope.createIsolatedScope(jsLib, coroutineContext)
+        } else {
+            getShareScope(null) ?: SharedJsScope.getCryptoScope(null)
+        }
         val scope = if (sharedScope == null) {
             RhinoScriptEngine.getRuntimeScope(bindings)
         } else {

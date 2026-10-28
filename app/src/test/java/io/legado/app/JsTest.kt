@@ -640,6 +640,19 @@ class JsTest {
         Assert.assertEquals("EXEC_ENV", RhinoScriptEngine.eval("libFn()", bindings))
     }
 
+    @Test
+    fun scheduledTaskJsLibraryScopeIsIsolatedPerEvaluation() {
+        val source = io.legado.app.data.entities.BookSource(
+            bookSourceUrl = "auto_task:scope-test",
+            bookSourceName = "scope-test",
+            jsLib = "var taskState = { counter: 0 }; " +
+                "function nextTaskCounter() { return ++taskState.counter; }"
+        )
+
+        Assert.assertEquals("1", source.evalJSInIsolatedScope("'' + nextTaskCounter()"))
+        Assert.assertEquals("1", source.evalJSInIsolatedScope("'' + nextTaskCounter()"))
+    }
+
     /**
      * 间接 eval 动态 realm 探针(FEATURE_LEGADO_DYNAMIC_EVAL_REALM,引擎 fork 补丁
      * NativeGlobal.js_eval/BaseFunction.dynamicConstructorScope):经函数对象调用的 eval

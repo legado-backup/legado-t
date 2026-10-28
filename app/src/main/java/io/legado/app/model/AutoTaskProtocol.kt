@@ -21,8 +21,14 @@ import io.legado.app.utils.isTrue
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 object AutoTaskProtocol {
+
+    private val refreshTocLocks = Array(32) { Mutex() }
 
     data class HandleResult(
         val handled: Boolean,
@@ -39,7 +45,9 @@ object AutoTaskProtocol {
         val actions = parseActions(result) ?: return HandleResult(false)
         val summaries = mutableListOf<String>()
         for (action in actions) {
+            currentCoroutineContext().ensureActive()
             val summary = handleAction(action, context, taskName)
+            currentCoroutineContext().ensureActive()
             if (summary.isNotBlank()) {
                 summaries.add(summary)
                 logger?.invoke(summary)
@@ -49,7 +57,7 @@ object AutoTaskProtocol {
         return HandleResult(true, merged, summaries)
     }
 
-    private fun handleAction(
+    private suspend fun handleAction(
         action: Map<String, Any?>,
         context: Context,
         taskName: String?
@@ -62,13 +70,27 @@ object AutoTaskProtocol {
         }
     }
 
-    private fun handleRefreshToc(action: Map<String, Any?>, context: Context): String {
+    private suspend fun handleRefreshToc(action: Map<String, Any?>, context: Context): String {
         val bookUrl = getString(action, "bookUrl")?.trim().orEmpty()
         if (bookUrl.isBlank()) return "refreshToc 缺少 bookUrl"
+        val lock = refreshTocLocks[(bookUrl.hashCode() and Int.MAX_VALUE) % refreshTocLocks.size]
+        return lock.withLock {
+            currentCoroutineContext().ensureActive()
+            handleRefreshTocLocked(bookUrl, action, context)
+        }
+    }
+
+    private suspend fun handleRefreshTocLocked(
+        bookUrl: String,
+        action: Map<String, Any?>,
+        context: Context
+    ): String {
         val book = appDb.bookDao.getBook(bookUrl) ?: return "refreshToc 未找到书籍"
         val beforeList = appDb.bookChapterDao.getChapterList(bookUrl)
         val beforeCount = beforeList.size
-        val refresh = BookController.refreshToc(mapOf("url" to listOf(bookUrl)))
+        currentCoroutineContext().ensureActive()
+        val refresh = BookController.refreshTocAwait(mapOf("url" to listOf(bookUrl)))
+        currentCoroutineContext().ensureActive()
         if (!refresh.isSuccess) {
             return "《${book.name}》更新失败: ${refresh.errorMsg}"
         }
