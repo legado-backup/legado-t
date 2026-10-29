@@ -17,7 +17,7 @@ Legado is a free and open source novel reader for Android.
 
 > 本仓库为 **阅读T**（Legado 增强分支）：在 Legado 基础上扩展定时任务、JS 书源、内置 MCP 服务等能力，详见下方 [阅读T增强特性](#阅读t增强特性)。
 >
-> [测试版下载](https://github.com/skybbk1001/legadoT/releases/tag/beta) · [本版更新说明](<CHANGELOG.md>) · [完整更新历史](<app/src/main/assets/updateLog.md>) · [API / MCP 使用说明](<api.md>)
+> [测试版下载](https://github.com/skybbk1001/legadoT/releases/tag/beta) · [本版更新说明](<CHANGELOG.md>) · [完整更新历史](<app/src/main/assets/updateLog.md>) · [API / MCP 使用说明](<api.md>) · [贡献与提交规范](<CONTRIBUTING.md>)
 >
 > **升级前请先备份。** 本轮测试版数据库由 93 升级到 94，首次启动自动迁移；迁移后的应用数据不支持直接交给旧版读取，如需回退，请使用升级前备份。
 

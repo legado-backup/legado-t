@@ -1,7 +1,12 @@
 {
   "name": "legado",
   "version": "1.0.0",
+  "engines": {
+    "node": ">=18"
+  },
   "devDependencies": {
+    "@commitlint/cli": "^20.2.0",
+    "@commitlint/config-conventional": "^20.2.0",
     "@codemirror/autocomplete": "^6.20.0",
     "@codemirror/commands": "^6.10.2",
     "@codemirror/lang-javascript": "^6.2.4",
@@ -9,18 +14,73 @@
     "@codemirror/search": "^6.6.0",
     "@codemirror/state": "^6.5.4",
     "@codemirror/view": "^6.39.14",
+    "commitizen": "^4.3.1",
     "cz-conventional-changelog": "^3.1.0",
-    "esbuild": "^0.27.3"
+    "esbuild": "^0.27.3",
+    "husky": "^9.1.7"
   },
   "config": {
     "commitizen": {
-      "path": "./node_modules/cz-conventional-changelog"
+      "path": "./node_modules/cz-conventional-changelog",
+      "types": {
+        "feat": {
+          "description": "新增功能",
+          "title": "Features"
+        },
+        "fix": {
+          "description": "修复问题",
+          "title": "Bug Fixes"
+        },
+        "docs": {
+          "description": "文档变更",
+          "title": "Documentation"
+        },
+        "refactor": {
+          "description": "代码重构",
+          "title": "Code Refactoring"
+        },
+        "test": {
+          "description": "测试变更",
+          "title": "Tests"
+        },
+        "ui": {
+          "description": "界面调整",
+          "title": "User Interface"
+        },
+        "build": {
+          "description": "构建或依赖变更",
+          "title": "Builds"
+        },
+        "ci": {
+          "description": "持续集成变更",
+          "title": "Continuous Integration"
+        },
+        "chore": {
+          "description": "其他维护性变更",
+          "title": "Chores"
+        },
+        "perf": {
+          "description": "性能优化",
+          "title": "Performance"
+        },
+        "style": {
+          "description": "代码格式变更",
+          "title": "Styles"
+        },
+        "revert": {
+          "description": "回滚变更",
+          "title": "Reverts"
+        }
+      }
     }
   },
   "description": "[![Commitizen friendly](https://img.shields.io/badge/commitizen-friendly-brightgreen.svg)](http://commitizen.github.io/cz-cli/)",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "commit": "cz",
+    "commitlint": "commitlint --last",
+    "prepare": "husky",
     "build:codemirror": "esbuild app/src/main/assets/web/code-editor/codemirror.entry.js --bundle --format=iife --global-name=CodeMirrorBundle --target=es2019 --minify --outfile=app/src/main/assets/web/code-editor/codemirror.bundle.js",
     "build:prettier": "esbuild node_modules/prettier/standalone.js --bundle --format=iife --global-name=prettier --target=es2019 --minify --outfile=app/src/main/assets/web/code-editor/standalone.min.js && esbuild node_modules/prettier/plugins/babel.js --bundle --format=iife --global-name=prettierPlugins.babel --target=es2019 --minify --outfile=app/src/main/assets/web/code-editor/babel.js && esbuild node_modules/prettier/plugins/estree.js --bundle --format=iife --global-name=prettierPlugins.estree --target=es2019 --minify --outfile=app/src/main/assets/web/code-editor/estree.js",
     "build": "npm run build:codemirror && npm run build:prettier"
