@@ -93,7 +93,6 @@ class SourceLoginV2Delegate(
             val showLoading = firstRender
             firstRender = false
             if (showLoading) binding.rotateLoading.visible()
-            val sessionInput = collectForm()
             val result = withContext(IO) {
                 kotlin.runCatching {
                     runScriptWithContext {
@@ -108,6 +107,7 @@ class SourceLoginV2Delegate(
                 }.getOrNull()
             }
             ensureActive()
+            val sessionInput = collectForm()
             if (showLoading) binding.rotateLoading.gone()
             val rows = result?.first
             if (rows == null) {

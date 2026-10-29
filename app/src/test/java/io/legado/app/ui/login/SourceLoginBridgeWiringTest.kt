@@ -46,6 +46,21 @@ class SourceLoginBridgeWiringTest {
     }
 
     @Test
+    fun loginV2CapturesSessionInputAfterAsyncRenderCompletes() {
+        val v2 = ProjectSources.app("src/main/java/io/legado/app/ui/login/SourceLoginV2Delegate.kt")
+        val render = v2.substringAfter("    private fun render() {")
+            .substringBefore("    private fun showRenderError() {")
+
+        val renderIo = render.indexOf("withContext(IO)")
+        val captureInput = render.indexOf("val sessionInput = collectForm()")
+        val rebuildViews = render.indexOf("buildViews(rows, sessionInput, result.second)")
+
+        assertTrue("render must start before capturing live form values", renderIo >= 0)
+        assertTrue("form values must be captured after async render", captureInput > renderIo)
+        assertTrue("captured values must be applied to the rebuilt views", rebuildViews > captureInput)
+    }
+
+    @Test
     fun notificationCallbacksKeepTheOriginalSourceJavaBinding() {
         val callback = ProjectSources.app("src/main/java/io/legado/app/model/SourceCallBack.kt")
         val notifications = callback.substringAfter("    fun callBackBook(")
